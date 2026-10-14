@@ -123,15 +123,13 @@ def health_check():
 def sitemap():
     content = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://ledgersnap.com/</loc><priority>1.0</priority></url>
-  <url><loc>https://ledgersnap.com/#pricing</loc><priority>0.8</priority></url>
-  <url><loc>https://ledgersnap.com/#faq</loc><priority>0.8</priority></url>
+  <url><loc>https://ledger-snap.com/</loc><priority>1.0</priority></url>
 </urlset>"""
     return Response(content=content, media_type="application/xml")
 
 @app.get("/robots.txt")
 def robots():
-    content = "User-agent: *\nAllow: /\nSitemap: https://ledgersnap.com/sitemap.xml\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n"
+    content = "User-agent: *\nAllow: /\nSitemap: https://ledger-snap.com/sitemap.xml\n\nUser-agent: GPTBot\nAllow: /\n\nUser-agent: PerplexityBot\nAllow: /\n\nUser-agent: ClaudeBot\nAllow: /\n"
     return Response(content=content, media_type="text/plain")
 
 @app.get("/api/sample")

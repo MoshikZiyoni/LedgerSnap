@@ -1,6 +1,6 @@
 User-agent: *
 Allow: /
-Sitemap: https://ledgersnap.com/sitemap.xml
+Sitemap: https://ledger-snap.com/sitemap.xml
 
 # Allow AI Search Crawlers for Generative Engine Optimization
 User-agent: GPTBot
