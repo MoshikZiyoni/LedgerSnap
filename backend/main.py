@@ -7,7 +7,7 @@ import json
 import requests
 import pandas as pd
 from typing import Dict, Any, Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 
@@ -23,7 +23,9 @@ try:
     from backend.database import (
         create_license, verify_license, verify_by_email, 
         find_license_by_email_or_key,
-        check_or_record_free_usage, deduct_credit_if_needed
+        get_free_usage_status, record_free_usage_download,
+        check_or_record_free_usage, deduct_credit_if_needed,
+        reset_free_usage
     )
 except ImportError:
     from converters.pdf_parser import extract_transactions_from_pdf
@@ -32,7 +34,9 @@ except ImportError:
     from database import (
         create_license, verify_license, verify_by_email, 
         find_license_by_email_or_key,
-        check_or_record_free_usage, deduct_credit_if_needed
+        get_free_usage_status, record_free_usage_download,
+        check_or_record_free_usage, deduct_credit_if_needed,
+        reset_free_usage
     )
 
 app = FastAPI(
@@ -77,11 +81,40 @@ SAMPLE_TRANSACTIONS = [
     {"date": "10/18/2026", "description": "CHASE BUSINESS CHECKING MONTHLY FEE WAIVED", "amount": 0.00, "type": "Credit", "balance": 16926.70}
 ]
 
+def get_client_ip(request: Request) -> str:
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.split(",")[0].strip()
+    x_forwarded = request.headers.get("x-forwarded-for")
+    if x_forwarded:
+        return x_forwarded.split(",")[0].strip()
+    return request.client.host if request.client else ""
+
+@app.get("/api/free-tier/status")
+def get_free_tier_status(request: Request, client_id: Optional[str] = Query(None)):
+    """Checks whether this IP or device has used their 1 free statement conversion."""
+    real_ip = get_client_ip(request)
+    cid = client_id or real_ip or "anonymous-client"
+    allowed, used = get_free_usage_status(cid, real_ip)
+    return {
+        "allowed": allowed,
+        "conversions_used": used,
+        "ip": real_ip
+    }
+
+@app.post("/api/free-tier/reset")
+def reset_free_status(request: Request, client_id: Optional[str] = Query(None)):
+    """Resets free tier usage for the calling IP and client_id."""
+    real_ip = get_client_ip(request)
+    cid = client_id or real_ip or "anonymous-client"
+    reset_free_usage(cid, real_ip)
+    return {"status": "reset_success", "ip": real_ip, "client_id": cid}
+
 @app.get("/api/health")
 def health_check():
     return {
         "status": "healthy",
-        "app": "BankToQBO",
+        "app": "LedgerSnap",
         "version": "1.0.0",
         "supported_formats": ["QBO (QuickBooks)", "XLSX (Excel)", "CSV"]
     }
@@ -404,8 +437,32 @@ def demo_checkout(payload: Dict[str, str]):
     }
 
 @app.post("/api/convert")
-async def convert_pdf(file: UploadFile = File(...)):
-    """Uploads and parses bank statement PDF."""
+async def convert_pdf(
+    request: Request,
+    file: UploadFile = File(...),
+    client_id: Optional[str] = Form(None),
+    license_key: Optional[str] = Form(None)
+):
+    """Uploads and parses bank statement PDF, strictly enforcing the 1-free-trial limit per IP/device."""
+    real_ip = get_client_ip(request)
+    cid = client_id or real_ip or "anonymous-client"
+
+    # Check if user has an active paid license
+    has_valid_license = False
+    if license_key:
+        lic = verify_license(license_key)
+        if lic and lic.get("credits_remaining", 0) > 0:
+            has_valid_license = True
+
+    if not has_valid_license:
+        # Check if this IP/client already exhausted free trial
+        allowed, used = get_free_usage_status(cid, real_ip)
+        if not allowed or used >= 1:
+            raise HTTPException(
+                status_code=402, 
+                detail="Free trial limit reached. You have already used your 1 free statement conversion from this IP address. Please upgrade to Pro ($19.99/mo) or purchase a Single Pass ($4.99) to convert more statements."
+            )
+
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
@@ -427,8 +484,14 @@ async def convert_pdf(file: UploadFile = File(...)):
             "filename": file.filename,
             "bank_name": bank_detected,
             "transactions": transactions,
-            "summary": summary
+            "summary": summary,
+            "client_id": cid,
+            "ip": real_ip
         }
+
+        # Consume the 1 free trial conversion for this IP/client
+        if not has_valid_license:
+            record_free_usage_download(cid, real_ip)
 
         return {
             "file_id": file_id,
@@ -438,30 +501,58 @@ async def convert_pdf(file: UploadFile = File(...)):
             "preview": transactions,
             "total_count": len(transactions)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse statement: {str(e)}")
 
 @app.get("/api/download/{file_id}")
 def download_converted(
+    request: Request,
     file_id: str, 
     format: str = Query("qbo", enum=["qbo", "xlsx", "csv"]),
+    client_id: Optional[str] = Query(None),
     license_key: Optional[str] = Query(None)
 ):
-    """Downloads parsed transactions in QBO, Excel (.xlsx), or CSV format."""
+    """Downloads parsed transactions in QBO, Excel (.xlsx), or CSV format, strictly tracked by IP and License."""
+    real_ip = get_client_ip(request)
+    cid = client_id or real_ip or "anonymous-client"
+    
+    is_authorized = False
     if license_key:
-        deduct_credit_if_needed(license_key)
+        lic = verify_license(license_key)
+        if lic and lic.get("credits_remaining", 0) > 0:
+            deduct_credit_if_needed(license_key)
+            is_authorized = True
 
     record = CONVERSIONS_DB.get(file_id)
     if not record:
-        # Check if sample
         if file_id == "demo-sample-chase-statement":
             record = {
                 "filename": "Chase_Business_Checking_October_2026.pdf",
                 "bank_name": "JPMorgan Chase",
-                "transactions": SAMPLE_TRANSACTIONS
+                "transactions": SAMPLE_TRANSACTIONS,
+                "summary": {
+                    "count": len(SAMPLE_TRANSACTIONS),
+                    "total_credits": 7450.00,
+                    "total_debits": 2423.30,
+                    "net_change": 5026.70
+                }
             }
         else:
             raise HTTPException(status_code=404, detail="File session expired or not found. Please re-upload.")
+
+    if not is_authorized and file_id != "demo-sample-chase-statement":
+        # Check ownership and ensure client didn't bypass
+        allowed, used = get_free_usage_status(cid, real_ip)
+        file_cid = record.get("client_id")
+        file_ip = record.get("ip")
+        # If the file belongs to this client/IP, allow the download of their 1 free statement
+        if file_cid and file_ip and (file_cid != cid and file_ip != real_ip):
+            raise HTTPException(
+                status_code=402, 
+                detail="Free trial limit reached. Upgrade to Pro for unlimited conversions and instant exports."
+            )
 
     transactions = record["transactions"]
     bank_name = record.get("bank_name", "Bank Statement")

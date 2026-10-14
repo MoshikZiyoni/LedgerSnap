@@ -196,6 +196,34 @@ input[type=range].custom-slider::-webkit-slider-thumb {
   animation: shimmer 3s infinite linear;
 }
 
+/* Spending Donut Chart & Category Card Styles */
+.donut-slice {
+  transition: all 0.25s ease;
+  transform-origin: center;
+  cursor: pointer;
+}
+
+.donut-slice:hover {
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.category-card {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.category-card:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.4) !important;
+}
+
+.category-card.active {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+}
+
 /* Responsive Mobile & Tablet Rules */
 @media (max-width: 768px) {
   nav {

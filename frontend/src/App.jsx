@@ -3,11 +3,74 @@ import {
   FileText, UploadCloud, CheckCircle2, AlertCircle, Download, 
   Search, ShieldCheck, Zap, ArrowRight, Lock, Sparkles, Building2,
   RefreshCw, DollarSign, BarChart3, HelpCircle, ChevronDown, Check,
-  BookOpen, X, ExternalLink
+  BookOpen, X, ExternalLink, PieChart, Filter, TrendingDown, Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+
+const getClientId = () => {
+  try {
+    let cid = localStorage.getItem('ls_client_id');
+    if (!cid) {
+      cid = 'cid_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+      localStorage.setItem('ls_client_id', cid);
+    }
+    return cid;
+  } catch {
+    return 'cid_anonymous';
+  }
+};
+
+const categorizeTransaction = (desc = '', amt = 0) => {
+  const d = (desc || '').toUpperCase();
+  if (amt > 0) {
+    return {
+      category: 'Income & Deposits',
+      color: '#10b981',
+      qbAccount: '40000 • Gross Sales & Client Revenue',
+      icon: '💵'
+    };
+  }
+  if (d.includes('GUSTO') || d.includes('PAYROLL') || d.includes('ADP') || d.includes('SALARY') || d.includes('WAGE') || d.includes('TAX DEDUCT')) {
+    return {
+      category: 'Payroll & Compensation',
+      color: '#ec4899',
+      qbAccount: '60000 • Payroll & Contractor Expenses',
+      icon: '👥'
+    };
+  }
+  if (d.includes('AWS') || d.includes('AMAZON WEB') || d.includes('GOOGLE') || d.includes('MICROSOFT') || d.includes('SLACK') || d.includes('GITHUB') || d.includes('INTUIT') || d.includes('QUICKBOOKS') || d.includes('ZOOM') || d.includes('ADOBE') || d.includes('NOTION') || d.includes('CLOUD') || d.includes('HOSTING')) {
+    return {
+      category: 'Software & Cloud SaaS',
+      color: '#38bdf8',
+      qbAccount: '63000 • Dues & Tech Subscriptions',
+      icon: '☁️'
+    };
+  }
+  if (d.includes('VERIZON') || d.includes('AT&T') || d.includes('T-MOBILE') || d.includes('UTILITY') || d.includes('ELECTRIC') || d.includes('POWER') || d.includes('WATER') || d.includes('COMED') || d.includes('INTERNET')) {
+    return {
+      category: 'Telecom & Utilities',
+      color: '#a855f7',
+      qbAccount: '65000 • Utilities & Communications',
+      icon: '⚡'
+    };
+  }
+  if (d.includes('FEE') || d.includes('WIRE') || d.includes('BANK') || d.includes('MONTHLY') || d.includes('LEGAL') || d.includes('CPA') || d.includes('ACCOUNTING')) {
+    return {
+      category: 'Professional & Bank Fees',
+      color: '#f59e0b',
+      qbAccount: '68000 • Bank Service Charges & Fees',
+      icon: '🏛️'
+    };
+  }
+  return {
+    category: 'General Operating Expenses',
+    color: '#64748b',
+    qbAccount: '69000 • General & Administrative',
+    icon: '📦'
+  };
+};
 
 const SAMPLE_DEMO_DATA = {
   file_id: "demo-sample-chase-statement",
@@ -47,6 +110,8 @@ export default function App() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [guideTab, setGuideTab] = useState('step1');
   const [selectedMonth, setSelectedMonth] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [hoveredCategory, setHoveredCategory] = useState(null);
 
   // Licensing & Checkout State
   const [license, setLicense] = useState(() => {
@@ -72,6 +137,22 @@ export default function App() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
+
+  // Sync free tier status by IP & persistent client ID from server upon mount
+  React.useEffect(() => {
+    const cid = getClientId();
+    fetch(`${API_BASE}/api/free-tier/status?client_id=${cid}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.conversions_used !== undefined) {
+          setFreeUsed(data.conversions_used);
+          if (data.conversions_used >= 1) {
+            localStorage.setItem('ls_free_used', String(data.conversions_used));
+          }
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Check URL parameter for incoming license redirect or Lemon Squeezy / Stripe checkout completion
   React.useEffect(() => {
@@ -128,6 +209,15 @@ export default function App() {
       return;
     }
 
+    // Check if free trial already consumed on frontend
+    if (!hasActiveLicense && freeUsed >= 1) {
+      setIsCheckoutOpen(true);
+      setCheckoutTab('plans');
+      setCheckoutPlan('pro_monthly');
+      setCheckoutMessage('⚡ Free trial limit reached! You have already converted 1 statement for free. Upgrade to Pro ($19.99/mo) or purchase a Single Pass ($4.99) to convert more:');
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
     setParsingStep(1);
@@ -139,8 +229,13 @@ export default function App() {
       window.trackLedgerEvent('file_uploaded', { filename: file.name });
     }
 
+    const cid = getClientId();
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('client_id', cid);
+    if (license?.license_key) {
+      formData.append('license_key', license.license_key);
+    }
 
     try {
       const response = await fetch(`${API_BASE}/api/convert`, {
@@ -150,12 +245,28 @@ export default function App() {
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => null);
+        if (response.status === 402) {
+          setFreeUsed(1);
+          try { localStorage.setItem('ls_free_used', '1'); } catch {}
+          setIsCheckoutOpen(true);
+          setCheckoutTab('plans');
+          setCheckoutPlan('pro_monthly');
+          setCheckoutMessage('⚡ Free trial limit reached for your IP address! Upgrade to Pro ($19.99/mo) or get a Single Pass ($4.99) to convert this file:');
+          throw new Error(errJson?.detail || 'Free trial limit reached.');
+        }
         throw new Error(errJson?.detail || `Server returned ${response.status}`);
       }
 
       const result = await response.json();
       setConversionData(result);
+      setSelectedCategory('all');
       triggerConfetti();
+
+      // If user converted on free tier, record locally as consumed
+      if (!hasActiveLicense) {
+        setFreeUsed(1);
+        try { localStorage.setItem('ls_free_used', '1'); } catch {}
+      }
 
       if (window.trackLedgerEvent) {
         window.trackLedgerEvent('conversion_success', { 
@@ -182,11 +293,14 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setConversionData(data);
+        setSelectedCategory('all');
       } else {
         setConversionData(SAMPLE_DEMO_DATA);
+        setSelectedCategory('all');
       }
     } catch {
       setConversionData(SAMPLE_DEMO_DATA);
+      setSelectedCategory('all');
     } finally {
       setIsLoading(false);
       triggerConfetti();
@@ -203,43 +317,54 @@ export default function App() {
 
   const hasActiveLicense = Boolean(license && (license.has_license || license.license_key));
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!conversionData) return;
 
-    // Free Trial Enforcement: If user has no active license and already used their 1 free conversion
-    if (!hasActiveLicense && freeUsed >= 1) {
-      setIsCheckoutOpen(true);
-      setCheckoutTab('plans');
-      setCheckoutPlan('pro_monthly');
-      setCheckoutMessage('⚡ You have used your 1 free statement conversion! Choose a plan below to instantly download this file and enjoy unlimited exports:');
-      return;
-    }
-
     const fileId = conversionData.file_id || 'demo-sample-chase-statement';
-    const licParam = license?.license_key ? `&license_key=${license.license_key}` : '';
-    const downloadUrl = `${API_BASE}/api/download/${fileId}?format=${selectedFormat}${licParam}`;
+    const cid = getClientId();
+    const licParam = license?.license_key ? `&license_key=${encodeURIComponent(license.license_key)}` : '';
+    const downloadUrl = `${API_BASE}/api/download/${fileId}?format=${selectedFormat}&client_id=${cid}${licParam}`;
 
-    if (window.trackLedgerEvent) {
-      window.trackLedgerEvent('download_completed', { format: selectedFormat });
-    }
-
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', `${conversionData.filename.replace('.pdf', '')}.${selectedFormat}`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    triggerConfetti();
-
-    // If first free download was just used, update state and localStorage
-    if (!hasActiveLicense && freeUsed === 0) {
-      setFreeUsed(1);
-      try {
-        localStorage.setItem('ls_free_used', '1');
-      } catch {
-        // ignore
+    try {
+      const res = await fetch(downloadUrl);
+      if (res.status === 402) {
+        setFreeUsed(1);
+        try { localStorage.setItem('ls_free_used', '1'); } catch {}
+        setIsCheckoutOpen(true);
+        setCheckoutTab('plans');
+        setCheckoutPlan('pro_monthly');
+        setCheckoutMessage('⚡ Free conversion limit reached for your IP! Choose a plan below to instantly download your statement:');
+        return;
       }
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.detail || `Download failed with status ${res.status}`);
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const baseFilename = (conversionData.filename || 'statement').replace(/\.pdf$/i, '');
+      link.setAttribute('download', `${baseFilename}.${selectedFormat}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      triggerConfetti();
+
+      if (!hasActiveLicense) {
+        setFreeUsed(1);
+        try { localStorage.setItem('ls_free_used', '1'); } catch {}
+      }
+
+      if (window.trackLedgerEvent) {
+        window.trackLedgerEvent('download_completed', { format: selectedFormat });
+      }
+    } catch (err) {
+      console.error('Download error:', err);
+      setError(err.message || 'Download failed. Please try again.');
     }
   };
 
@@ -335,13 +460,40 @@ export default function App() {
         return parts.length === 3 && `${parts[1]}/${parts[2]}` === selectedMonth;
       });
 
-  const filteredTransactions = monthFiltered.filter(item => 
+  const categoryFiltered = selectedCategory === 'all'
+    ? monthFiltered
+    : monthFiltered.filter(t => categorizeTransaction(t.description, t.amount).category === selectedCategory);
+
+  const filteredTransactions = categoryFiltered.filter(item => 
     item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.date.includes(searchQuery)
   );
 
   const activeCredits = monthFiltered.reduce((sum, t) => t.amount > 0 ? sum + t.amount : sum, 0);
   const activeDebits = monthFiltered.reduce((sum, t) => t.amount < 0 ? sum + Math.abs(t.amount) : sum, 0);
+
+  // Compute expense categories for spending distribution chart
+  const expenseTransactions = monthFiltered.filter(t => t.amount < 0);
+  const totalExpenses = expenseTransactions.reduce((acc, t) => acc + Math.abs(t.amount), 0);
+  
+  const categoryMap = {};
+  expenseTransactions.forEach(t => {
+    const cat = categorizeTransaction(t.description, t.amount);
+    if (!categoryMap[cat.category]) {
+      categoryMap[cat.category] = {
+        name: cat.category,
+        color: cat.color,
+        icon: cat.icon,
+        qbAccount: cat.qbAccount,
+        total: 0,
+        count: 0
+      };
+    }
+    categoryMap[cat.category].total += Math.abs(t.amount);
+    categoryMap[cat.category].count += 1;
+  });
+
+  const expenseCategories = Object.values(categoryMap).sort((a, b) => b.total - a.total);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -706,6 +858,214 @@ export default function App() {
                 </div>
               )}
 
+              {/* Financial Intelligence & Spending Distribution Dashboard */}
+              {expenseCategories.length > 0 && (() => {
+                const curr = conversionData?.summary?.currency_symbol || (
+                  ['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$'
+                );
+
+                // SVG Donut Calculations
+                const radius = 58;
+                const circumference = 2 * Math.PI * radius; // ~364.42
+                let accumulatedOffset = 0;
+
+                const activeHighlight = hoveredCategory || (selectedCategory !== 'all' ? expenseCategories.find(c => c.name === selectedCategory) : null);
+
+                return (
+                  <div style={{ 
+                    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.6))', 
+                    border: '1px solid rgba(56, 189, 248, 0.25)', 
+                    borderRadius: '16px', 
+                    padding: '24px', 
+                    marginBottom: '24px',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)'
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <PieChart size={17} color="var(--accent-cyan)" />
+                          </div>
+                          <h3 style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '-0.3px', margin: 0 }}>
+                            Spending Breakdown & QuickBooks Expense Intelligence
+                          </h3>
+                        </div>
+                        <p style={{ color: 'var(--text-dim)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                          Deterministic AI classifies each transaction into standard QuickBooks Chart of Accounts. Click any category slice or card below to filter the table.
+                        </p>
+                      </div>
+
+                      {selectedCategory !== 'all' && (
+                        <button
+                          onClick={() => setSelectedCategory('all')}
+                          style={{
+                            background: 'rgba(56, 189, 248, 0.15)',
+                            border: '1px solid var(--accent-cyan)',
+                            color: 'var(--accent-cyan)',
+                            borderRadius: '8px',
+                            padding: '6px 14px',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <X size={14} /> Clear Filter ({selectedCategory})
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Content Grid: Chart on Left, Cards on Right */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', alignItems: 'center' }}>
+                      
+                      {/* Left: Interactive SVG Donut */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: '220px' }}>
+                        <svg width="220" height="220" viewBox="0 0 160 160" style={{ transform: 'rotate(-90deg)' }}>
+                          {/* Background Track */}
+                          <circle
+                            cx="80"
+                            cy="80"
+                            r={radius}
+                            fill="transparent"
+                            stroke="rgba(255, 255, 255, 0.05)"
+                            strokeWidth="15"
+                          />
+                          {/* Slices */}
+                          {expenseCategories.map((cat) => {
+                            const pct = totalExpenses > 0 ? (cat.total / totalExpenses) : 0;
+                            const strokeDasharray = `${pct * circumference} ${circumference - (pct * circumference)}`;
+                            const strokeDashoffset = -accumulatedOffset;
+                            accumulatedOffset += pct * circumference;
+
+                            const isSelected = selectedCategory === cat.name;
+                            const isHovered = hoveredCategory?.name === cat.name;
+
+                            return (
+                              <circle
+                                key={cat.name}
+                                cx="80"
+                                cy="80"
+                                r={radius}
+                                fill="transparent"
+                                stroke={cat.color}
+                                strokeWidth={isSelected || isHovered ? 18 : 14}
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                                className="donut-slice"
+                                style={{
+                                  opacity: (selectedCategory === 'all' && !hoveredCategory) || isSelected || isHovered ? 1 : 0.35,
+                                  color: cat.color
+                                }}
+                                onMouseEnter={() => setHoveredCategory(cat)}
+                                onMouseLeave={() => setHoveredCategory(null)}
+                                onClick={() => setSelectedCategory(selectedCategory === cat.name ? 'all' : cat.name)}
+                              />
+                            );
+                          })}
+                        </svg>
+
+                        {/* Center Metric Display */}
+                        <div style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          textAlign: 'center',
+                          pointerEvents: 'none',
+                          maxWidth: '135px'
+                        }}>
+                          {activeHighlight ? (
+                            <>
+                              <span style={{ fontSize: '11px', color: activeHighlight.color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {activeHighlight.icon} {activeHighlight.name}
+                              </span>
+                              <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff', marginTop: '2px' }}>
+                                -{curr}{activeHighlight.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--text-dim)', fontWeight: '600' }}>
+                                {((activeHighlight.total / (totalExpenses || 1)) * 100).toFixed(1)}% of Outflow
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>
+                                Total Outflows
+                              </span>
+                              <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff', marginTop: '2px' }}>
+                                -{curr}{totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </div>
+                              <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: '600' }}>
+                                {expenseTransactions.length} Expenses
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Category Legend & Filter Cards */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {expenseCategories.map((cat) => {
+                          const pct = totalExpenses > 0 ? ((cat.total / totalExpenses) * 100).toFixed(1) : 0;
+                          const isSelected = selectedCategory === cat.name;
+
+                          return (
+                            <div
+                              key={cat.name}
+                              className={`category-card ${isSelected ? 'active' : ''}`}
+                              onClick={() => setSelectedCategory(isSelected ? 'all' : cat.name)}
+                              onMouseEnter={() => setHoveredCategory(cat)}
+                              onMouseLeave={() => setHoveredCategory(null)}
+                              style={{
+                                background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                                border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid rgba(255, 255, 255, 0.07)',
+                                borderRadius: '10px',
+                                padding: '10px 14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '12px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: cat.color, flexShrink: 0, boxShadow: `0 0 8px ${cat.color}` }} />
+                                <div style={{ overflow: 'hidden' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {cat.icon} {cat.name}
+                                    </span>
+                                    {isSelected && (
+                                      <span style={{ fontSize: '10px', padding: '1px 6px', background: 'var(--accent-cyan)', color: '#0f172a', borderRadius: '4px', fontWeight: '700' }}>
+                                        Active Filter
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {cat.qbAccount}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                <div style={{ fontSize: '13px', fontWeight: '800', color: '#fff' }}>
+                                  -{curr}{cat.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                  <strong style={{ color: cat.color }}>{pct}%</strong> • {cat.count} {cat.count === 1 ? 'tx' : 'txs'}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Format Switcher & Search Bar */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
@@ -737,6 +1097,7 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <span style={{ fontSize: '13px', color: 'var(--text-dim)', fontWeight: '500' }}>
                     Showing {filteredTransactions.length} of {conversionData.summary.count} transactions
+                    {selectedCategory !== 'all' && ` (Filtered: ${selectedCategory})`}
                   </span>
 
                   <div style={{ position: 'relative', width: '260px' }}>
@@ -759,6 +1120,7 @@ export default function App() {
                     <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
                       <th style={{ padding: '12px 16px', fontWeight: '600' }}>Date</th>
                       <th style={{ padding: '12px 16px', fontWeight: '600' }}>Description / Payee</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>QuickBooks Category</th>
                       <th style={{ padding: '12px 16px', fontWeight: '600' }}>Type</th>
                       <th style={{ padding: '12px 16px', fontWeight: '600', textAlign: 'right' }}>Amount</th>
                       <th style={{ padding: '12px 16px', fontWeight: '600', textAlign: 'right' }}>Balance</th>
@@ -767,12 +1129,31 @@ export default function App() {
                   <tbody>
                     {filteredTransactions.map((t, idx) => {
                       const desc = t.description;
+                      const cat = categorizeTransaction(desc, t.amount);
 
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
                           <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{t.date}</td>
                           <td dir="auto" style={{ padding: '12px 16px', fontWeight: '500', textAlign: /[\u0590-\u05FF]/.test(desc) ? 'right' : 'left' }}>
                             {desc}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              fontSize: '11px',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: `${cat.color}15`,
+                              color: cat.color,
+                              border: `1px solid ${cat.color}35`,
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <span>{cat.icon}</span>
+                              <span>{cat.name}</span>
+                            </span>
                           </td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '9999px', background: t.amount >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)', color: t.amount >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)', fontWeight: '600' }}>

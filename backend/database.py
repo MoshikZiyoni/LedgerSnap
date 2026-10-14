@@ -148,37 +148,88 @@ def find_license_by_email_or_key(identifier: str) -> Optional[Dict[str, Any]]:
             return dict(row)
     return None
 
-def check_or_record_free_usage(client_id: str, ip_address: str) -> Tuple[bool, int]:
+def get_free_usage_status(client_id: str, ip_address: str) -> Tuple[bool, int]:
     """
-    Checks if client has free conversions left.
-    Default policy: 1 full free statement conversion per user.
+    Checks whether the client/IP has free conversions left without consuming credits.
     Returns: (is_allowed, conversions_used)
     """
+    clean_ip = (ip_address or "").strip()
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT conversions_count FROM free_usage WHERE client_id = ?", (client_id,))
+        if clean_ip:
+            cursor.execute("""
+                SELECT conversions_count FROM free_usage 
+                WHERE client_id = ? OR ip_address = ?
+                ORDER BY conversions_count DESC LIMIT 1
+            """, (client_id, clean_ip))
+        else:
+            cursor.execute("""
+                SELECT conversions_count FROM free_usage 
+                WHERE client_id = ?
+                ORDER BY conversions_count DESC LIMIT 1
+            """, (client_id,))
+        row = cursor.fetchone()
+        if row:
+            used = row["conversions_count"]
+            return (used < 1), used
+        return True, 0
+
+def record_free_usage_download(client_id: str, ip_address: str) -> Tuple[bool, int]:
+    """
+    Records a free statement download or conversion for a client/IP.
+    Returns: (is_allowed, total_conversions_used)
+    """
+    clean_ip = (ip_address or "").strip()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        if clean_ip:
+            cursor.execute("""
+                SELECT id, conversions_count FROM free_usage 
+                WHERE client_id = ? OR ip_address = ?
+                ORDER BY conversions_count DESC LIMIT 1
+            """, (client_id, clean_ip))
+        else:
+            cursor.execute("""
+                SELECT id, conversions_count FROM free_usage 
+                WHERE client_id = ?
+                ORDER BY conversions_count DESC LIMIT 1
+            """, (client_id,))
         row = cursor.fetchone()
 
         if row is None:
-            # First time user
+            # First time user consumes their 1 free statement
             cursor.execute("""
                 INSERT INTO free_usage (client_id, ip_address, conversions_count)
                 VALUES (?, ?, 1)
-            """, (client_id, ip_address))
+            """, (client_id, clean_ip))
             conn.commit()
             return True, 1
         else:
+            rec_id = row["id"]
             used = row["conversions_count"]
             if used < 1:
                 cursor.execute("""
                     UPDATE free_usage 
-                    SET conversions_count = conversions_count + 1, last_used_at = CURRENT_TIMESTAMP
-                    WHERE client_id = ?
-                """, (client_id,))
+                    SET conversions_count = 1, last_used_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (rec_id,))
                 conn.commit()
-                return True, used + 1
+                return True, 1
             else:
+                # Already used their 1 free pass! Block them!
                 return False, used
+
+def reset_free_usage(client_id: str, ip_address: str):
+    """Resets free usage for testing/admin purposes."""
+    clean_ip = (ip_address or "").strip()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM free_usage WHERE client_id = ? OR ip_address = ?", (client_id, clean_ip))
+        conn.commit()
+
+def check_or_record_free_usage(client_id: str, ip_address: str) -> Tuple[bool, int]:
+    """Backward compatibility alias."""
+    return record_free_usage_download(client_id, ip_address)
 
 def deduct_credit_if_needed(license_key: str):
     """Decrements 1 credit if the user is on a single-use plan."""
