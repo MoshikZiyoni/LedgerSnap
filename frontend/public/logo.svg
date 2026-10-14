@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a101f" />
+      <stop offset="100%" stop-color="#050811" />
+    </linearGradient>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="60%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(56, 189, 248, 0.6)" />
+      <stop offset="100%" stop-color="rgba(16, 185, 129, 0.3)" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#38bdf8" flood-opacity="0.65"/>
+    </filter>
+  </defs>
+
+  <!-- Glassmorphic Rounded Background Squircle -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGrad)" stroke="url(#strokeGrad)" stroke-width="2" />
+  
+  <!-- Subtle Internal Glow Ring -->
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+
+  <!-- Ledger Sheet Base / Layers -->
+  <!-- Layer 2 (Back sheet) -->
+  <path d="M44 23H48C49.1 23 50 23.9 50 25V43C50 44.1 49.1 45 48 45H44" stroke="url(#neonGrad)" stroke-width="2" stroke-linecap="round" opacity="0.45" />
+  
+  <!-- Layer 1 (Front Ledger Book) -->
+  <rect x="15" y="19" width="28" height="26" rx="4" stroke="url(#neonGrad)" stroke-width="2.5" fill="rgba(15, 23, 42, 0.7)" />
+  
+  <!-- Ledger Lines -->
+  <line x1="20" y1="25" x2="33" y2="25" stroke="url(#neonGrad)" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+  <line x1="20" y1="30" x2="27" y2="30" stroke="url(#neonGrad)" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+  <line x1="20" y1="35" x2="31" y2="35" stroke="url(#neonGrad)" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+  <line x1="20" y1="40" x2="34" y2="40" stroke="url(#neonGrad)" stroke-width="2" stroke-linecap="round" opacity="0.8" />
+
+  <!-- The "Snap" Lightning Bolt (Sharp, Dynamic, Overlaying with Glow) -->
+  <path d="M43 13L26 33H35L23 51L47 28H37L43 13Z" fill="url(#neonGrad)" stroke="#0a101f" stroke-width="1.5" stroke-linejoin="round" filter="url(#glow)" />
+</svg>

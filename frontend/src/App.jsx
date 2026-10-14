@@ -511,9 +511,13 @@ export default function App() {
       {/* Navigation */}
       <nav style={{ padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10, 14, 23, 0.9)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setConversionData(null)}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(56, 189, 248, 0.4)' }}>
-            <FileText color="#ffffff" size={22} />
-          </div>
+          <img 
+            src="/logo.svg" 
+            alt="LedgerSnap Logo" 
+            style={{ width: '42px', height: '42px', borderRadius: '10px', boxShadow: '0 4px 18px rgba(56, 189, 248, 0.35)', transition: 'transform 0.2s ease', flexShrink: 0 }} 
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.06)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          />
           <div>
             <span style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '-0.5px', fontFamily: 'var(--font-display)' }}>Ledger<span style={{ color: 'var(--accent-cyan)' }}>Snap</span></span>
             <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Bank to QuickBooks AI</span>
@@ -1562,9 +1566,11 @@ export default function App() {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Zap size={20} color="#fff" />
-              </div>
+              <img 
+                src="/logo.svg" 
+                alt="LedgerSnap" 
+                style={{ width: '36px', height: '36px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(56, 189, 248, 0.3)', flexShrink: 0 }} 
+              />
               <h3 style={{ fontSize: '20px', fontWeight: '800' }}>Unlock Instant Conversions</h3>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
@@ -1720,7 +1726,7 @@ export default function App() {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <BookOpen color="var(--accent-cyan)" size={24} />
+              <img src="/logo.svg" alt="LedgerSnap" style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0 }} />
               <h3 style={{ fontSize: '20px', fontWeight: '800' }}>Step-by-Step Quick Guide</h3>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
@@ -1815,11 +1821,9 @@ export default function App() {
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border-subtle)', padding: '40px 24px', background: 'rgba(10, 14, 23, 0.95)', marginTop: 'auto', textAlign: 'center', fontSize: '13px', color: 'var(--text-dim)' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FileText color="#fff" size={14} />
-            </div>
-            <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '16px' }}>LedgerSnap</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.svg" alt="LedgerSnap Logo" style={{ width: '28px', height: '28px', borderRadius: '7px', flexShrink: 0 }} />
+            <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '16px', letterSpacing: '-0.3px' }}>Ledger<span style={{ color: 'var(--accent-cyan)' }}>Snap</span></span>
           </div>
 
           <div style={{ display: 'flex', gap: '24px' }}>
