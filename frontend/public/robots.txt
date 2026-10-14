@@ -1,8 +1,9 @@
 User-agent: *
 Allow: /
+
 Sitemap: https://ledger-snap.com/sitemap.xml
 
-# Allow AI Search Crawlers for Generative Engine Optimization
+# Specialized AI Search Bots for Generative Discovery
 User-agent: GPTBot
 Allow: /
 

@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  FileText, UploadCloud, CheckCircle2, AlertCircle, Download, 
-  Search, ShieldCheck, Zap, ArrowRight, Lock, Sparkles, Building2,
-  RefreshCw, DollarSign, BarChart3, HelpCircle, ChevronDown, Check,
-  BookOpen, X, ExternalLink, PieChart, Filter, TrendingDown, Layers,
-  Eye, Cookie
+  UploadCloud, CheckCircle2, AlertCircle, Download, 
+  Search, ShieldCheck, Zap, Lock, Sparkles,
+  RefreshCw, DollarSign, BarChart3, ChevronDown, Check,
+  BookOpen, X, PieChart,
+  Eye, Cookie, Cpu
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import LiveDemoSection from './components/LiveDemoSection';
+import BankLandingPage from './components/BankLandingPage';
+import ComparisonPage from './components/ComparisonPage';
+import GuidePage from './components/GuidePage';
+import Footer from './components/Footer';
+import { SEO_BANKS } from './data/seoBanks';
+import { SEO_COMPARISONS } from './data/seoComparisons';
+import { SEO_GUIDES } from './data/seoGuides';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
 
@@ -139,7 +147,43 @@ export default function App() {
   const [checkoutMessage, setCheckoutMessage] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
 
-  // Accessibility & Cookie Consent State
+  // Client-Side Routing State for Programmatic SEO
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigate = (path) => {
+    if (path.includes('#')) {
+      const parts = path.split('#');
+      const targetPath = parts[0] || '/';
+      const hash = '#' + parts[1];
+
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', path);
+        setCurrentPath(targetPath);
+      } else {
+        window.history.pushState({}, '', path);
+      }
+
+      setTimeout(() => {
+        const el = document.querySelector(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 50);
+      return;
+    }
+
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [showCookieBanner, setShowCookieBanner] = useState(() => {
     try {
       return !localStorage.getItem('ls_cookie_consent');
@@ -569,7 +613,7 @@ export default function App() {
 
       {/* Navigation */}
       <nav style={{ padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10, 14, 23, 0.9)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setConversionData(null)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setConversionData(null); handleNavigate('/'); }}>
           <img 
             src="/logo.svg" 
             alt="LedgerSnap Logo" 
@@ -590,10 +634,10 @@ export default function App() {
           >
             <BookOpen size={15} /> Quick Guide
           </button>
-          <a href="#roi-calculator" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Calculator</a>
-          <a href="#how-it-works" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Why LedgerSnap</a>
-          <a href="#pricing" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Pricing</a>
-          <a href="#faq" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>FAQ</a>
+          <a href="#roi-calculator" onClick={(e) => { e.preventDefault(); handleNavigate('/#roi-calculator'); }} className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Calculator</a>
+          <a href="#how-it-works" onClick={(e) => { e.preventDefault(); handleNavigate('/#how-it-works'); }} className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Why LedgerSnap</a>
+          <a href="#pricing" onClick={(e) => { e.preventDefault(); handleNavigate('/#pricing'); }} className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Pricing</a>
+          <a href="#faq" onClick={(e) => { e.preventDefault(); handleNavigate('/#faq'); }} className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>FAQ</a>
           
           {hasActiveLicense ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--accent-emerald)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}>
@@ -632,19 +676,79 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Programmatic SEO Landing Pages Routing (Bank Converters, Comparisons, Guides) */}
+      {!conversionData && currentPath.startsWith('/convert/') && (() => {
+        const slug = currentPath.replace('/convert/', '').replace(/\/$/, '');
+        const bank = SEO_BANKS.find(b => b.slug === slug);
+        if (bank) {
+          return (
+            <BankLandingPage 
+              bank={bank}
+              onFileUpload={handleFileUpload}
+              isLoading={isLoading}
+              parsingStep={parsingStep}
+              error={error}
+              onLoadSample={loadSample}
+              onNavigate={handleNavigate}
+            />
+          );
+        }
+        return null;
+      })()}
+
+      {!conversionData && currentPath.startsWith('/compare/') && (() => {
+        const slug = currentPath.replace('/compare/', '').replace(/\/$/, '');
+        const comparison = SEO_COMPARISONS.find(c => c.slug === slug);
+        if (comparison) {
+          return (
+            <ComparisonPage 
+              comparison={comparison}
+              onNavigate={handleNavigate}
+              onTryDemo={loadSample}
+            />
+          );
+        }
+        return null;
+      })()}
+
+      {!conversionData && currentPath.startsWith('/guides/') && (() => {
+        const slug = currentPath.replace('/guides/', '').replace(/\/$/, '');
+        const guide = SEO_GUIDES.find(g => g.slug === slug);
+        if (guide) {
+          return (
+            <GuidePage 
+              guide={guide}
+              onNavigate={handleNavigate}
+              onTryDemo={loadSample}
+            />
+          );
+        }
+        return null;
+      })()}
+
+      {/* Homepage & Studio Content (Rendered on '/' or when a conversion is active) */}
+      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/'))) && (
       <main style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '48px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div className="glass-pill pulse-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 20px', marginBottom: '20px', color: '#38bdf8', fontSize: '13px', fontWeight: '700', border: '1px solid rgba(56, 189, 248, 0.4)' }}>
-            <Sparkles size={16} color="#10b981" /> 
-            <span>Try It Free: <strong>Convert 1 Statement at $0 Cost</strong> • No Card Required</span>
+          {/* Trust & Architecture Badges (Task 2) */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '24px' }}>
+            <span className="glass-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', color: '#38bdf8', fontSize: '12px', fontWeight: '700', border: '1px solid rgba(56, 189, 248, 0.4)' }}>
+              <Cpu size={14} color="#38bdf8" /> Zero-Retention RAM Processing
+            </span>
+            <span className="glass-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', color: '#10b981', fontSize: '12px', fontWeight: '700', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
+              <ShieldCheck size={14} color="#10b981" /> Hosted on SOC 2 Type II Cloud Infrastructure
+            </span>
+            <span className="glass-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', color: '#a855f7', fontSize: '12px', fontWeight: '700', border: '1px solid rgba(168, 85, 247, 0.4)' }}>
+              <Lock size={14} color="#a855f7" /> 256-Bit TLS &amp; Client-Side Encryption
+            </span>
           </div>
+
           <h1 className="hero-headline" style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: '800', lineHeight: 1.15, marginBottom: '20px', letterSpacing: '-1px' }}>
             Convert Bank Statement PDF to <br />
-            <span className="gradient-text">QuickBooks (.QBO) & Excel</span> in Seconds
+            <span className="gradient-text">QuickBooks (.QBO) &amp; Excel</span> in Seconds
           </h1>
           <p className="hero-subtext" style={{ fontSize: '18px', color: 'var(--text-muted)', maxWidth: '720px', margin: '0 auto 28px auto' }}>
-            Stop wasting hours manually retyping bank transactions. Instantly converts Chase, Bank of America, Wells Fargo & 500+ bank statements into certified Intuit QuickBooks and clean Excel spreadsheets with 100% mathematical accuracy.
+            Stop wasting hours manually retyping bank transactions. Instantly converts Chase, Bank of America, Wells Fargo &amp; 500+ bank statements into certified Intuit QuickBooks and clean Excel spreadsheets with 100% mathematical accuracy.
           </p>
         </div>
 
@@ -726,14 +830,37 @@ export default function App() {
                 </div>
               )}
 
-              {/* Supported Bank Badges */}
+              {/* Supported Bank Badges with Programmatic SEO Links */}
               <div id="supported-banks" style={{ marginTop: '32px', textAlign: 'center' }}>
                 <span style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-dim)', fontWeight: '600' }}>Pre-Tuned Layout Algorithms For</span>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
-                  {['JPMorgan Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'Capital One', 'Barclays', 'TD Bank', 'Bank Hapoalim', 'Bank Leumi', 'Israel Discount Bank'].map((bank, i) => (
-                    <span key={i} className="glass-pill" style={{ padding: '6px 14px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                      🏛️ {bank}
-                    </span>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  {[
+                    { name: 'JPMorgan Chase', slug: 'chase-pdf-to-qbo' },
+                    { name: 'Bank of America', slug: 'bank-of-america-pdf-to-qbo' },
+                    { name: 'Wells Fargo', slug: 'wells-fargo-pdf-to-qbo' },
+                    { name: 'Citibank', slug: 'citibank-pdf-to-qbo' },
+                    { name: 'Capital One', slug: 'capital-one-pdf-to-qbo' },
+                    { name: 'American Express', slug: 'american-express-pdf-to-qbo' },
+                    { name: 'Mercury', slug: 'mercury-bank-pdf-to-qbo' },
+                    { name: 'TD Bank', slug: 'td-bank-pdf-to-qbo' },
+                    { name: 'PNC Bank', slug: 'pnc-bank-pdf-to-qbo' },
+                    { name: 'U.S. Bank', slug: 'us-bank-pdf-to-qbo' },
+                    { name: 'Bank Hapoalim', slug: 'bank-hapoalim-pdf-to-qbo' },
+                    { name: 'Bank Leumi', slug: 'bank-leumi-pdf-to-qbo' },
+                    { name: 'Discount Bank', slug: 'discount-bank-pdf-to-qbo' },
+                    { name: 'Mizrahi-Tefahot', slug: 'mizrahi-tefahot-pdf-to-qbo' }
+                  ].map((bankItem, i) => (
+                    <a 
+                      key={i} 
+                      href={`/convert/${bankItem.slug}`}
+                      onClick={(e) => { e.preventDefault(); handleNavigate(`/convert/${bankItem.slug}`); }}
+                      className="glass-pill" 
+                      style={{ padding: '6px 14px', fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-cyan)'; e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-subtle)'; }}
+                    >
+                      🏛️ {bankItem.name}
+                    </a>
                   ))}
                 </div>
               </div>
@@ -1377,9 +1504,9 @@ export default function App() {
               <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-indigo)', marginBottom: '16px' }}>
                 <Lock size={24} />
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Strict Privacy & Zero Retention</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Strict Privacy &amp; Zero Retention</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6 }}>
-                We never store, log, or sell your financial data. Files are processed in ephemeral memory and permanently deleted immediately after conversion. SOC2 architecture standards.
+                Your financial documents are processed strictly in ephemeral volatile memory (RAM) and permanently wiped the instant your .QBO or .XLSX file is generated. We never store bank statements on disk, never log transaction rows, and never use client data to train AI models. Hosted on SOC 2 Type II certified cloud infrastructure.
               </p>
             </div>
 
@@ -1394,6 +1521,9 @@ export default function App() {
             </div>
           </div>
         </section>
+
+        {/* Live Demo Video & Technical Guarantees Section (Task 1) */}
+        <LiveDemoSection onTryChaseDemo={loadSample} />
 
         {/* Comparison Matrix */}
         <section style={{ marginBottom: '80px' }}>
@@ -1418,7 +1548,7 @@ export default function App() {
                   { feature: "Certified .QBO / OFX 200 Output", ls: "✅ Certified Direct Import", chat: "❌ Corrupts / Not Supported", manual: "❌ Not possible (Excel only)", legacy: "✅ Supported" },
                   { feature: "Accuracy Guarantee", ls: "✅ 100% Mathematical Checksum", chat: "❌ Hallucinates & swaps columns", manual: "⚠️ Frequent Human Typos", legacy: "✅ Good" },
                   { feature: "Conversion Speed", ls: "⚡ Under 3 Seconds", chat: "⏱️ 3-5 Minutes", manual: "🐢 2 - 5 Hours per file", legacy: "⏱️ 10 - 20 Minutes" },
-                  { feature: "Data Privacy & Security", ls: "🛡️ Zero-Knowledge Ephemeral RAM", chat: "⚠️ Trains on Your Bank Data", manual: "⚠️ Exposed to Outsourced Staff", legacy: "🛡️ Local Machine" },
+                  { feature: "Data Privacy & Security", ls: "🛡️ Ephemeral RAM (SOC 2 Cloud)", chat: "⚠️ Trains on Your Bank Data", manual: "⚠️ Exposed to Outsourced Staff", legacy: "🛡️ Local Machine" },
                   { feature: "Price per month", ls: "💎 $19.99 / mo (Unlimited)", chat: "💲 $20 / mo (Invalid files)", manual: "💸 $30 - $70 / hour", legacy: "💸 $60 - $120 / mo" }
                 ].map((row, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
@@ -1431,60 +1561,6 @@ export default function App() {
                 ))}
               </tbody>
             </table>
-          </div>
-        </section>
-
-        {/* Verified Testimonials */}
-        <section style={{ marginBottom: '80px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-            <div className="glass-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', marginBottom: '12px', color: 'var(--accent-emerald)', fontSize: '12px', fontWeight: '700' }}>
-              ⭐ Rated 4.9/5 by 380+ Bookkeepers & CPAs
-            </div>
-            <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '8px' }}>Trusted by Modern Accounting Professionals</h2>
-            <p style={{ color: 'var(--text-muted)' }}>See how LedgerSnap is saving dozens of hours every tax season.</p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-            {[
-              {
-                quote: "We had a client come in with 3 years of backlog Chase statements in PDF. Retyping would have taken 2 days. LedgerSnap converted all 36 statements into clean .QBO files in under 3 minutes. Flawless QuickBooks import.",
-                author: "Marcus Vance, CPA",
-                role: "Managing Partner at Vance Financial, TX",
-                avatar: "MV"
-              },
-              {
-                quote: "I tested 4 different PDF converters before finding LedgerSnap. Every other tool scrambled the multi-line check descriptions or flipped credits and debits. LedgerSnap calculated the running balance to the penny.",
-                author: "Elena Rostova",
-                role: "Certified QuickBooks ProAdvisor, FL",
-                avatar: "ER"
-              },
-              {
-                quote: "The single pass for $4.99 was a lifesaver for our mortgage application. Upgraded immediately to the $19.99 monthly plan for my bookkeeping clients. Best ROI tool in my tech stack.",
-                author: "Julian Chen",
-                role: "Small Business Owner & Consultant, CA",
-                avatar: "JC"
-              }
-            ].map((t, idx) => (
-              <div key={idx} className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', color: '#fbbf24' }}>
-                    {'★★★★★'}
-                  </div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6, fontStyle: 'italic', marginBottom: '20px' }}>
-                    "{t.quote}"
-                  </p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px' }}>
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: '14px', fontWeight: '700' }}>{t.author}</h4>
-                    <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{t.role}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -1573,11 +1649,11 @@ export default function App() {
               },
               {
                 q: "Is my banking information secure and private?",
-                a: "Yes, 100%. We never ask for your bank login or password. The PDF conversion happens in isolated ephemeral memory. We do not store your statements or share financial data with any third parties."
+                a: "Your financial documents are processed strictly in ephemeral volatile memory (RAM) and permanently wiped the instant your .QBO or .XLSX file is generated. We never store bank statements on disk, never log transaction rows, and never use client data to train AI models. Hosted on SOC 2 Type II certified cloud infrastructure."
               },
               {
                 q: "Why shouldn't I just use ChatGPT or Gemini to convert my bank statement for free?",
-                a: "QuickBooks strictly rejects regular spreadsheets and markdown text; it requires certified OFX 102/200 binary formatting with financial institution INTU.BID tags and cryptographic FITID transaction hashes that ChatGPT cannot produce. Furthermore, probabilistic AI models frequently hallucinate amounts, swap credit/debit columns, and violate US GLBA / SOC-2 banking privacy regulations by retaining client financial data. LedgerSnap provides deterministic, mathematically validated files with zero retention."
+                a: "QuickBooks strictly rejects regular spreadsheets and markdown text; it requires certified OFX 102/200 binary formatting with financial institution INTU.BID tags and cryptographic FITID transaction hashes that ChatGPT cannot produce. Furthermore, probabilistic AI models frequently hallucinate amounts, swap credit/debit columns, and violate client privacy regulations by retaining sensitive financial data. LedgerSnap processes files strictly in ephemeral volatile memory (RAM) hosted on SOC 2 Type II certified cloud infrastructure with deterministic balance checksums."
               },
               {
                 q: "Which banks are supported?",
@@ -1612,6 +1688,7 @@ export default function App() {
           </div>
         </section>
       </main>
+      )}
 
       {/* Checkout & Licensing Modal */}
       {isCheckoutOpen && (
@@ -1737,6 +1814,9 @@ export default function App() {
                   <span>•</span>
                   <span>Cancel Anytime</span>
                 </div>
+                <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: 'var(--text-dim)' }}>
+                  Questions or custom invoices? Contact us at <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Moshiktm1994@gmail.com</a>
+                </div>
               </form>
             ) : (
               <form onSubmit={handleRestoreLicense}>
@@ -1767,6 +1847,9 @@ export default function App() {
                 >
                   {checkoutLoading ? 'Searching...' : 'Restore My License'}
                 </button>
+                <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: 'var(--text-dim)' }}>
+                  Need help? Contact support at <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Moshiktm1994@gmail.com</a>
+                </div>
               </form>
             )}
           </div>
@@ -1877,25 +1960,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--border-subtle)', padding: '40px 24px', background: 'rgba(10, 14, 23, 0.95)', marginTop: 'auto', textAlign: 'center', fontSize: '13px', color: 'var(--text-dim)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.svg" alt="LedgerSnap Logo" style={{ width: '28px', height: '28px', borderRadius: '7px', flexShrink: 0 }} />
-            <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '16px', letterSpacing: '-0.3px' }}>Ledger<span style={{ color: 'var(--accent-cyan)' }}>Snap</span></span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '24px' }}>
-            <span onClick={() => setIsGuideOpen(true)} style={{ color: 'var(--accent-cyan)', cursor: 'pointer' }}>Quick Guide</span>
-            <a href="#how-it-works" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>How it works</a>
-            <a href="#pricing" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>Pricing</a>
-            <a href="#faq" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>FAQ</a>
-            <span style={{ color: 'var(--text-dim)' }}>Privacy & SOC2 Compliant</span>
-          </div>
-
-          <p>© 2026 LedgerSnap. Built for CPAs, bookkeepers, and modern businesses.</p>
-        </div>
-      </footer>
+      {/* Footer (Task 5 & Contact Support) */}
+      <Footer onNavigate={handleNavigate} onOpenGuide={() => setIsGuideOpen(true)} />
 
       {/* Cookie Consent Banner */}
       {showCookieBanner && (
