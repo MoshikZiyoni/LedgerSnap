@@ -1,0 +1,1141 @@
+import React, { useState } from 'react';
+import { 
+  FileText, UploadCloud, CheckCircle2, AlertCircle, Download, 
+  Search, ShieldCheck, Zap, ArrowRight, Lock, Sparkles, Building2,
+  RefreshCw, DollarSign, BarChart3, HelpCircle, ChevronDown, Check,
+  BookOpen, X, ExternalLink
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+
+const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+
+const SAMPLE_DEMO_DATA = {
+  file_id: "demo-sample-chase-statement",
+  filename: "Chase_Business_Checking_October_2026.pdf",
+  bank_name: "JPMorgan Chase Bank, N.A.",
+  summary: {
+    count: 12,
+    total_credits: 7450.00,
+    total_debits: 2423.30,
+    net_change: 5026.70,
+    bank_detected: "JPMorgan Chase Bank, N.A."
+  },
+  preview: [
+    { date: "10/01/2026", description: "STRIPE PAYMENTS TRANSFER PPD", amount: 2450.00, type: "Credit", balance: 14250.00 },
+    { date: "10/02/2026", description: "AMAZON WEB SERVICES AWS.AMAZON.COM WA", amount: -148.50, type: "Debit", balance: 14101.50 },
+    { date: "10/03/2026", description: "GUSTO PAYROLL PE1024 TAX DEDUCT", amount: -1850.00, type: "Debit", balance: 12251.50 },
+    { date: "10/05/2026", description: "GOOGLE WORKSPACE CC GOOGLE.COM CA", amount: -36.00, type: "Debit", balance: 12215.50 },
+    { date: "10/07/2026", description: "CLIENT WIRE INVOICE #1042 CORP INC", amount: 3800.00, type: "Credit", balance: 16015.50 },
+    { date: "10/09/2026", description: "MICROSOFT 365 MSBILL.INFO WA", amount: -22.00, type: "Debit", balance: 15993.50 },
+    { date: "10/11/2026", description: "SLACK TECHNOLOGIES SUBSCRIPTION", amount: -45.00, type: "Debit", balance: 15948.50 },
+    { date: "10/12/2026", description: "GITHUB ENTERPRISE SEATTLE WA", amount: -21.00, type: "Debit", balance: 15927.50 },
+    { date: "10/14/2026", description: "VERIZON WIRELESS ONLINE PMT", amount: -115.80, type: "Debit", balance: 15811.70 },
+    { date: "10/15/2026", description: "CLIENT CONSULTING PAYMENT ACME LLC", amount: 1200.00, type: "Credit", balance: 17011.70 },
+    { date: "10/16/2026", description: "INTUIT QUICKBOOKS ONLINE MTHLY", amount: -85.00, type: "Debit", balance: 16926.70 },
+    { date: "10/18/2026", description: "CHASE BUSINESS CHECKING MONTHLY FEE WAIVED", amount: 0.00, type: "Credit", balance: 16926.70 }
+  ]
+};
+
+export default function App() {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversionData, setConversionData] = useState(null);
+  const [error, setError] = useState(null);
+  const [selectedFormat, setSelectedFormat] = useState('qbo');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [openFaq, setOpenFaq] = useState(null);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [guideTab, setGuideTab] = useState('step1');
+  const [selectedMonth, setSelectedMonth] = useState('all');
+
+  // Licensing & Checkout State
+  const [license, setLicense] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('bqbo_license')) || null;
+    } catch {
+      return null;
+    }
+  });
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState('pro_monthly');
+  const [checkoutEmail, setCheckoutEmail] = useState('');
+  const [checkoutTab, setCheckoutTab] = useState('plans');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState(null);
+  const [checkoutError, setCheckoutError] = useState(null);
+
+  // Check URL parameter for incoming license redirect or Lemon Squeezy / Stripe checkout completion
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripeSessionId = params.get('stripe_session_id');
+    const urlLic = params.get('license') || params.get('license_key');
+    const lsSuccess = params.get('ls_success');
+    const returnPlan = params.get('plan');
+
+    if (stripeSessionId) {
+      fetch(`${API_BASE}/api/stripe/verify-session?session_id=${stripeSessionId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.license_key) {
+            setLicense(data);
+            localStorage.setItem('bqbo_license', JSON.stringify(data));
+            triggerConfetti();
+            if (window.trackLedgerEvent) {
+              window.trackLedgerEvent('purchase_success', { plan: data.plan });
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        })
+        .catch(console.error);
+    } else if (urlLic) {
+      fetch(`${API_BASE}/api/license/status?license_key=${urlLic}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.has_license) {
+            setLicense(data);
+            localStorage.setItem('bqbo_license', JSON.stringify(data));
+            triggerConfetti();
+            if (window.trackLedgerEvent) {
+              window.trackLedgerEvent('purchase_success', { plan: data.plan });
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        })
+        .catch(console.error);
+    } else if (lsSuccess) {
+      // Returned from Lemon Squeezy Checkout
+      triggerConfetti();
+      setCheckoutMessage('🎉 Payment successful! Check your email for your license key.');
+      setIsCheckoutOpen(true);
+      setCheckoutTab('restore');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setError('Please upload a PDF bank statement.');
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+
+    if (window.trackLedgerEvent) {
+      window.trackLedgerEvent('file_uploaded', { filename: file.name });
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/convert`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => null);
+        throw new Error(errJson?.detail || `Server returned ${response.status}`);
+      }
+
+      const result = await response.json();
+      setConversionData(result);
+      triggerConfetti();
+
+      if (window.trackLedgerEvent) {
+        window.trackLedgerEvent('conversion_success', { 
+          count: result.summary?.count, 
+          bank: result.bank_name 
+        });
+      }
+    } catch (err) {
+      console.error('Extraction error:', err);
+      setError(err.message || 'Failed to parse statement. Please ensure it is a valid PDF statement.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSample = async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/sample`);
+      if (res.ok) {
+        const data = await res.json();
+        setConversionData(data);
+      } else {
+        setConversionData(SAMPLE_DEMO_DATA);
+      }
+    } catch {
+      setConversionData(SAMPLE_DEMO_DATA);
+    } finally {
+      setIsLoading(false);
+      triggerConfetti();
+    }
+  };
+
+  const triggerConfetti = () => {
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+  };
+
+  const handleDownload = () => {
+    if (!conversionData) return;
+    const fileId = conversionData.file_id || 'demo-sample-chase-statement';
+    const licParam = license?.license_key ? `&license_key=${license.license_key}` : '';
+    const downloadUrl = `${API_BASE}/api/download/${fileId}?format=${selectedFormat}${licParam}`;
+
+    if (window.trackLedgerEvent) {
+      window.trackLedgerEvent('download_completed', { format: selectedFormat });
+    }
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', `${conversionData.filename.replace('.pdf', '')}.${selectedFormat}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    triggerConfetti();
+  };
+
+  const handleActivateLicense = async (e) => {
+    e.preventDefault();
+    if (!checkoutEmail || !checkoutEmail.includes('@')) {
+      setCheckoutError('Please enter a valid email address.');
+      return;
+    }
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    setCheckoutMessage(null);
+
+    if (window.trackLedgerEvent) {
+      window.trackLedgerEvent('checkout_started', { plan: checkoutPlan, email: checkoutEmail });
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/checkout/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: checkoutEmail, 
+          plan: checkoutPlan,
+          origin: window.location.origin
+        })
+      });
+      const data = await res.json();
+      if (data.url) {
+        if (data.demo_mode && data.license) {
+          setLicense(data.license);
+          localStorage.setItem('bqbo_license', JSON.stringify(data.license));
+          setCheckoutMessage('🎉 Payment successful! Pro access activated.');
+          triggerConfetti();
+          setTimeout(() => {
+            setIsCheckoutOpen(false);
+            setCheckoutMessage(null);
+          }, 1500);
+        } else {
+          // Hosted Lemon Squeezy / Stripe Checkout redirect
+          window.location.href = data.url;
+        }
+      } else {
+        throw new Error(data.detail || 'Failed to initiate checkout session');
+      }
+    } catch (err) {
+      setCheckoutError(err.message || 'Payment failed. Please try again.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleRestoreLicense = async (e) => {
+    e.preventDefault();
+    if (!checkoutEmail || !checkoutEmail.includes('@')) {
+      setCheckoutError('Please enter your purchase email address.');
+      return;
+    }
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    setCheckoutMessage(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/license/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: checkoutEmail })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLicense(data);
+        localStorage.setItem('bqbo_license', JSON.stringify(data));
+        setCheckoutMessage('🎉 Active license found and restored!');
+        triggerConfetti();
+        setTimeout(() => {
+          setIsCheckoutOpen(false);
+          setCheckoutMessage(null);
+        }, 1500);
+      } else {
+        setCheckoutError('No active license found for this email.');
+      }
+    } catch {
+      setCheckoutError('Email not found. Please verify your purchase email.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const monthFiltered = selectedMonth === 'all'
+    ? (conversionData?.preview || [])
+    : (conversionData?.preview || []).filter(t => {
+        const parts = t.date.split('/');
+        return parts.length === 3 && `${parts[1]}/${parts[2]}` === selectedMonth;
+      });
+
+  const filteredTransactions = monthFiltered.filter(item => 
+    item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.date.includes(searchQuery)
+  );
+
+  const activeCredits = monthFiltered.reduce((sum, t) => t.amount > 0 ? sum + t.amount : sum, 0);
+  const activeDebits = monthFiltered.reduce((sum, t) => t.amount < 0 ? sum + Math.abs(t.amount) : sum, 0);
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Top Banner */}
+      <div style={{ background: 'linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '8px 16px', textAlign: 'center', fontSize: '13px', color: '#93c5fd' }}>
+        ✨ Certified Intuit QuickBooks Web Connect (.QBO) & Excel (.XLSX) format. Over 14,000 statements converted this month.
+      </div>
+
+      {/* Navigation */}
+      <nav style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 50, background: 'rgba(10, 14, 23, 0.85)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setConversionData(null)}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(56, 189, 248, 0.4)' }}>
+            <FileText color="#ffffff" size={22} />
+          </div>
+          <div>
+            <span style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '-0.5px', fontFamily: 'var(--font-display)' }}>Ledger<span style={{ color: 'var(--accent-cyan)' }}>Snap</span></span>
+            <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Instant Statement Converter</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <button 
+            onClick={() => setIsGuideOpen(true)}
+            style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <BookOpen size={15} /> Quick Guide
+          </button>
+          <a href="#how-it-works" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>How It Works</a>
+          <a href="#pricing" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>Pricing</a>
+          <a href="#faq" className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>FAQ</a>
+          
+          {license ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--accent-emerald)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}>
+              <Sparkles size={14} /> Pro Member Active
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button 
+                onClick={() => { setIsCheckoutOpen(true); setCheckoutTab('restore'); }} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Restore License
+              </button>
+              <button 
+                onClick={() => { setIsCheckoutOpen(true); setCheckoutTab('plans'); }} 
+                className="gradient-btn" 
+                style={{ padding: '8px 18px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Zap size={14} /> Get Unlimited Pro
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <main style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '48px 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div className="glass-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', marginBottom: '20px', color: 'var(--accent-cyan)', fontSize: '13px', fontWeight: '600' }}>
+            <Zap size={15} /> 100% Automated • Zero Manual Typing Required
+          </div>
+          <h1 className="hero-headline" style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: '800', lineHeight: 1.15, marginBottom: '20px', letterSpacing: '-1px' }}>
+            Convert Bank Statement PDF to <br />
+            <span className="gradient-text">QuickBooks (.QBO) & Excel</span> in Seconds
+          </h1>
+          <p className="hero-subtext" style={{ fontSize: '18px', color: 'var(--text-muted)', maxWidth: '680px', margin: '0 auto 28px auto' }}>
+            Stop wasting hours manually retyping bank transactions. Accurately converts Chase, Bank of America, Wells Fargo & 500+ international bank statements into certified import files.
+          </p>
+        </div>
+
+        {/* Studio Card / Dropzone */}
+        <div className="glass-panel" style={{ padding: '32px', marginBottom: '64px' }}>
+          {!conversionData ? (
+            <div>
+              <div 
+                className={`dropzone ${isDragOver ? 'drag-active' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                  }
+                }}
+                onClick={() => document.getElementById('pdf-file-input').click()}
+              >
+                <input 
+                  type="file" 
+                  id="pdf-file-input" 
+                  accept=".pdf" 
+                  style={{ display: 'none' }} 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+                  {isLoading ? <RefreshCw className="animate-spin" size={32} /> : <UploadCloud size={32} />}
+                </div>
+
+                <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                  {isLoading ? 'Scanning Bank Statement & Extracting Transactions...' : 'Drop your Bank Statement PDF here'}
+                </h3>
+                <p style={{ color: 'var(--text-dim)', fontSize: '14px', marginBottom: '20px' }}>
+                  Supports up to 500 pages. 256-bit client-side encryption. No banking passwords required.
+                </p>
+
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button type="button" className="gradient-btn" disabled={isLoading}>
+                    <UploadCloud size={16} /> Browse PDF File
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={(e) => { e.stopPropagation(); loadSample(); }}
+                    style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '12px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
+                  >
+                    <Sparkles size={16} color="#38bdf8" /> Try with Chase Demo Statement
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', color: '#f87171', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                  <AlertCircle size={18} /> {error}
+                </div>
+              )}
+
+              {/* Supported Bank Badges */}
+              <div id="supported-banks" style={{ marginTop: '32px', textAlign: 'center' }}>
+                <span style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-dim)', fontWeight: '600' }}>Pre-Tuned Layout Algorithms For</span>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  {['JPMorgan Chase', 'Bank of America', 'Wells Fargo', 'Citibank', 'Capital One', 'Barclays', 'TD Bank', 'Bank Hapoalim', 'Bank Leumi', 'Israel Discount Bank'].map((bank, i) => (
+                    <span key={i} className="glass-pill" style={{ padding: '6px 14px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      🏛️ {bank}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Conversion Result Dashboard */
+            <div>
+              {/* Header result bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', paddingBottom: '24px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                    <span className="glass-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)', padding: '4px 12px', fontSize: '12px', fontWeight: '700', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                      ✓ Parsed Successfully
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{conversionData.filename}</span>
+                  </div>
+                  <h2 style={{ fontSize: '24px', fontWeight: '800' }}>{conversionData.bank_name || 'Commercial Bank'} Statement</h2>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <button 
+                    onClick={() => setConversionData(null)} 
+                    style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    Convert Another PDF
+                  </button>
+
+                  <button onClick={handleDownload} className="gradient-btn" style={{ padding: '10px 24px', fontSize: '14px' }}>
+                    <Download size={16} /> Download {selectedFormat.toUpperCase()} File
+                  </button>
+                </div>
+              </div>
+
+              {/* Financial Metrics Strip */}
+              {(() => {
+                const curr = conversionData?.summary?.currency_symbol || (
+                  ['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$'
+                );
+                const monthCount = conversionData?.summary?.months?.length || 1;
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                    {/* Card 1: Ending Balance */}
+                    <div style={{ background: 'rgba(56, 189, 248, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                      <span style={{ color: 'var(--accent-cyan)', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700' }}>Account Ending Balance</span>
+                      <p style={{ fontSize: '24px', fontWeight: '800', marginTop: '4px', color: '#fff' }}>
+                        {curr}{conversionData.summary.ending_balance !== null && conversionData.summary.ending_balance !== undefined ? conversionData.summary.ending_balance.toLocaleString('en-US', { minimumFractionDigits: 2 }) : conversionData.summary.net_change.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+                        As of {conversionData.summary.end_date || 'latest statement date'}
+                      </span>
+                    </div>
+
+                    {/* Card 2: Deposits */}
+                    <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                      <span style={{ color: 'var(--accent-emerald)', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700' }}>Total Deposits (Credits)</span>
+                      <p style={{ fontSize: '24px', fontWeight: '800', marginTop: '4px', color: 'var(--accent-emerald)' }}>
+                        +{curr}{activeCredits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+                        {selectedMonth === 'all' ? (monthCount > 1 ? `All ${monthCount} Statement Months` : 'Full Period') : `Selected Month (${selectedMonth})`}
+                      </span>
+                    </div>
+
+                    {/* Card 3: Payments */}
+                    <div style={{ background: 'rgba(244, 63, 94, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                      <span style={{ color: 'var(--accent-rose)', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700' }}>Total Payments (Debits)</span>
+                      <p style={{ fontSize: '24px', fontWeight: '800', marginTop: '4px', color: 'var(--accent-rose)' }}>
+                        -{curr}{activeDebits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+                        {selectedMonth === 'all' ? (monthCount > 1 ? `All ${monthCount} Statement Months` : 'Full Period') : `Selected Month (${selectedMonth})`}
+                      </span>
+                    </div>
+
+                    {/* Card 4: Statement Period */}
+                    <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                      <span style={{ color: 'var(--text-dim)', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700' }}>Statement Period</span>
+                      <p style={{ fontSize: '16px', fontWeight: '800', marginTop: '6px', color: '#fff', letterSpacing: '-0.2px' }}>
+                        {conversionData.summary.date_range || 'Recent'}
+                      </p>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>
+                        {conversionData.summary.count} transactions in file
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Monthly Filter Navigation Tabs */}
+              {conversionData.summary.months && conversionData.summary.months.length > 1 && (
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '14px 18px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <BarChart3 size={16} color="var(--accent-cyan)" />
+                      Statement spans {conversionData.summary.months.length} months ({conversionData.summary.date_range}):
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
+                      Filter by month to view that month's exact deposits & payments
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    <button
+                      onClick={() => setSelectedMonth('all')}
+                      style={{
+                        padding: '7px 16px',
+                        borderRadius: '8px',
+                        border: selectedMonth === 'all' ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                        background: selectedMonth === 'all' ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.04)',
+                        color: selectedMonth === 'all' ? '#0f172a' : 'var(--text-muted)',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      All Transactions ({conversionData.summary.count})
+                    </button>
+                    {conversionData.summary.months.map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => setSelectedMonth(m.key)}
+                        style={{
+                          padding: '7px 16px',
+                          borderRadius: '8px',
+                          border: selectedMonth === m.key ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                          background: selectedMonth === m.key ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.04)',
+                          color: selectedMonth === m.key ? '#0f172a' : 'var(--text-muted)',
+                          fontSize: '13px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {m.label} ({m.count} txns)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Format Switcher & Search Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  {[
+                    { id: 'qbo', label: 'QuickBooks (.QBO)', badge: 'Recommended' },
+                    { id: 'xlsx', label: 'Excel (.XLSX)' },
+                    { id: 'csv', label: 'CSV (.CSV)' },
+                  ].map(fmt => (
+                    <button
+                      key={fmt.id}
+                      onClick={() => setSelectedFormat(fmt.id)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        transition: 'all 0.2s',
+                        background: selectedFormat === fmt.id ? 'var(--accent-cyan)' : 'transparent',
+                        color: selectedFormat === fmt.id ? '#0f172a' : 'var(--text-muted)'
+                      }}
+                    >
+                      {fmt.label} {fmt.badge && <span style={{ fontSize: '10px', padding: '2px 6px', background: selectedFormat === fmt.id ? '#0f172a' : 'rgba(56, 189, 248, 0.2)', color: selectedFormat === fmt.id ? '#fff' : 'var(--accent-cyan)', borderRadius: '4px', marginLeft: '4px' }}>{fmt.badge}</span>}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-dim)', fontWeight: '500' }}>
+                    Showing {filteredTransactions.length} of {conversionData.summary.count} transactions
+                  </span>
+
+                  <div style={{ position: 'relative', width: '260px' }}>
+                    <Search size={16} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input 
+                      type="text" 
+                      placeholder="Search payees or dates..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ width: '100%', padding: '8px 12px 8px 36px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.2)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>Date</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>Description / Payee</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>Type</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '600', textAlign: 'right' }}>Amount</th>
+                      <th style={{ padding: '12px 16px', fontWeight: '600', textAlign: 'right' }}>Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTransactions.map((t, idx) => {
+                      const desc = t.description;
+
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                          <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{t.date}</td>
+                          <td dir="auto" style={{ padding: '12px 16px', fontWeight: '500', textAlign: /[\u0590-\u05FF]/.test(desc) ? 'right' : 'left' }}>
+                            {desc}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '9999px', background: t.amount >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)', color: t.amount >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)', fontWeight: '600' }}>
+                              {t.amount >= 0 ? 'Credit' : 'Debit'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', fontFamily: 'monospace', color: t.amount >= 0 ? 'var(--accent-emerald)' : 'var(--text-main)' }}>
+                            {t.amount >= 0 ? '+' : '-'}{conversionData?.summary?.currency_symbol || (['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$')}{Math.abs(t.amount).toFixed(2)}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-dim)', fontFamily: 'monospace' }}>
+                            {t.balance !== null && t.balance !== undefined ? `${conversionData?.summary?.currency_symbol || (['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$')}${Number(t.balance).toFixed(2)}` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bottom call to action */}
+              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(56, 189, 248, 0.05)', padding: '16px 20px', borderRadius: '12px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ShieldCheck size={24} color="var(--accent-cyan)" />
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700' }}>Ready for QuickBooks Online & Desktop Import</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>Transactions formatted to standard INTU.BID #3000 OFX specifications.</p>
+                  </div>
+                </div>
+                <button onClick={handleDownload} className="gradient-btn" style={{ padding: '10px 20px', fontSize: '13px' }}>
+                  Download {selectedFormat.toUpperCase()} Now
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Value Proposition Feature Grid */}
+        <section id="how-it-works" style={{ marginBottom: '80px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '12px' }}>Why CPAs & Bookkeepers Choose BankToQBO</h2>
+            <p style={{ color: 'var(--text-muted)' }}>Avoid common QuickBooks CSV import errors, mismatching columns, and duplicate entries.</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            <div className="glass-panel" style={{ padding: '28px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(56, 189, 248, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-cyan)', marginBottom: '16px' }}>
+                <Zap size={24} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Certified .QBO Web Connect</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6 }}>
+                QuickBooks Online and Desktop reject PDF files and often corrupt column mappings on generic CSVs. Our .QBO files import directly into the QuickBooks bank register with zero mapping.
+              </p>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '28px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-indigo)', marginBottom: '16px' }}>
+                <Lock size={24} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Strict Privacy & Zero Retention</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6 }}>
+                We never store, log, or sell your financial data. Files are processed in ephemeral memory and permanently deleted immediately after conversion. SOC2 architecture standards.
+              </p>
+            </div>
+
+            <div className="glass-panel" style={{ padding: '28px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-emerald)', marginBottom: '16px' }}>
+                <CheckCircle2 size={24} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Accurate Table Extraction</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6 }}>
+                Trained on complex bank layouts that break regular PDF converters: multi-line payee descriptions, floating check numbers, combined debits/credits, and running balances.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Table (US / Global focused) */}
+        <section id="pricing" style={{ marginBottom: '80px', textAlign: 'center' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '12px' }}>Simple, Transparent Pricing</h2>
+            <p style={{ color: 'var(--text-muted)' }}>Choose pay-per-document or unlimited monthly conversions.</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', maxWidth: '960px', margin: '0 auto' }}>
+            {/* Pay per doc */}
+            <div className="glass-panel" style={{ padding: '32px', textAlign: 'left' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Single Statement</h3>
+              <p style={{ color: 'var(--text-dim)', fontSize: '13px', marginBottom: '16px' }}>For one-off loan or tax filings</p>
+              <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>$4.99 <span style={{ fontSize: '14px', color: 'var(--text-dim)', fontWeight: '400' }}>/ statement</span></div>
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: 'var(--text-muted)', marginBottom: '28px' }}>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> 1 Statement (Up to 50 pages)</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Instant .QBO, .XLSX & .CSV</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> 100% Client-Side Encryption</li>
+              </ul>
+              <button 
+                onClick={() => { setIsCheckoutOpen(true); setCheckoutPlan('single'); }} 
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Get Single Pass ($4.99)
+              </button>
+            </div>
+
+            {/* Pro Monthly (Best Value) */}
+            <div className="glass-panel" style={{ padding: '32px', textAlign: 'left', border: '2px solid var(--accent-cyan)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: '-12px', right: '24px', background: 'var(--accent-cyan)', color: '#0f172a', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '9999px', textTransform: 'uppercase' }}>
+                Most Popular
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700' }}>Bookkeeper Pro</h3>
+              <p style={{ color: 'var(--text-dim)', fontSize: '13px', marginBottom: '16px' }}>For business owners & freelancers</p>
+              <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>$19.99 <span style={{ fontSize: '14px', color: 'var(--text-dim)', fontWeight: '400' }}>/ month</span></div>
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: 'var(--text-muted)', marginBottom: '28px' }}>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> <strong>Unlimited</strong> Statement Conversions</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Batch Upload Multiple Statements</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Priority Table Parsing AI</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Cancel anytime with 1-click</li>
+              </ul>
+              <button 
+                onClick={() => { setIsCheckoutOpen(true); setCheckoutPlan('pro_monthly'); }} 
+                className="gradient-btn" 
+                style={{ width: '100%', padding: '12px' }}
+              >
+                Get Bookkeeper Pro ($19.99/mo)
+              </button>
+            </div>
+
+            {/* Firm Plan */}
+            <div className="glass-panel" style={{ padding: '32px', textAlign: 'left' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '700' }}>CPA & Accounting Firm</h3>
+              <p style={{ color: 'var(--text-dim)', fontSize: '13px', marginBottom: '16px' }}>For high-volume accounting firms</p>
+              <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>$49.00 <span style={{ fontSize: '14px', color: 'var(--text-dim)', fontWeight: '400' }}>/ month</span></div>
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: 'var(--text-muted)', marginBottom: '28px' }}>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Unlimited Team Seats</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Dedicated API Access</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Scanned & Faxed PDF OCR Engine</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Dedicated Account Manager</li>
+              </ul>
+              <button 
+                onClick={() => { setIsCheckoutOpen(true); setCheckoutPlan('firm'); }} 
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Get Firm Plan ($49/mo)
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* SEO FAQ Section */}
+        <section id="faq" style={{ maxWidth: '800px', margin: '0 auto 80px auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>Frequently Asked Questions</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>Everything you need to know about BankToQBO</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              {
+                q: "How do I import the .QBO file into QuickBooks Online?",
+                a: "Log in to QuickBooks Online, navigate to Bookkeeping > Transactions > Bank transactions. In the top right corner, click the arrow next to 'Link account' and choose 'Upload from file'. Select your downloaded .QBO file and match it to your checking account. All transactions appear instantly!"
+              },
+              {
+                q: "Is my banking information secure and private?",
+                a: "Yes, 100%. We never ask for your bank login or password. The PDF conversion happens in isolated ephemeral memory. We do not store your statements or share financial data with any third parties."
+              },
+              {
+                q: "Why shouldn't I just use ChatGPT or Gemini to convert my bank statement for free?",
+                a: "QuickBooks strictly rejects regular spreadsheets and markdown text; it requires certified OFX 102/200 binary formatting with financial institution INTU.BID tags and cryptographic FITID transaction hashes that ChatGPT cannot produce. Furthermore, probabilistic AI models frequently hallucinate amounts, swap credit/debit columns, and violate US GLBA / SOC-2 banking privacy regulations by retaining client financial data. LedgerSnap provides deterministic, mathematically validated files with zero retention."
+              },
+              {
+                q: "Which banks are supported?",
+                a: "LedgerSnap supports all major US, UK, European, and international banks including JPMorgan Chase, Bank of America, Wells Fargo, Citibank, Capital One, Barclays, PNC, TD Bank, Silicon Valley Bank, Mercury, and Israeli banks (Bank Hapoalim, Bank Leumi, Israel Discount Bank, Bank Yahav, Mizrahi Tefahot)."
+              },
+              {
+                q: "Why not just use a regular free PDF to Excel converter?",
+                a: "Regular converters treat PDFs as raw text. They split payee names across rows, mix up debits with credits, and omit running balances. Most importantly, QuickBooks Online will fail when trying to import generic spreadsheets. LedgerSnap guarantees certified OFX/QBO formatting."
+              }
+            ].map((faq, index) => (
+              <div 
+                key={index}
+                className="glass-panel" 
+                style={{ padding: '20px 24px', cursor: 'pointer' }}
+                onClick={() => setOpenFaq(openFaq === index ? null : index)}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600' }}>{faq.q}</h4>
+                  <ChevronDown 
+                    size={18} 
+                    color="var(--accent-cyan)" 
+                    style={{ transform: openFaq === index ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} 
+                  />
+                </div>
+                {openFaq === index && (
+                  <p style={{ marginTop: '12px', color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.6 }}>
+                    {faq.a}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      {/* Checkout & Licensing Modal */}
+      {isCheckoutOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '540px', background: 'rgba(15, 23, 42, 0.95)', border: '1px solid var(--border-subtle)', borderRadius: '16px', padding: '32px', position: 'relative', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)' }}>
+            <button 
+              onClick={() => setIsCheckoutOpen(false)}
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Zap size={20} color="#fff" />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: '800' }}>Unlock Instant Conversions</h3>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
+              Certified Intuit QuickBooks (.QBO) & Excel (.XLSX) format. Process in seconds.
+            </p>
+
+            {/* Modal Tabs */}
+            <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px', marginBottom: '24px' }}>
+              <button 
+                onClick={() => setCheckoutTab('plans')}
+                style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: checkoutTab === 'plans' ? 'var(--accent-cyan)' : 'transparent', color: checkoutTab === 'plans' ? '#0f172a' : 'var(--text-muted)', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+              >
+                Choose Plan
+              </button>
+              <button 
+                onClick={() => setCheckoutTab('restore')}
+                style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', background: checkoutTab === 'restore' ? 'var(--accent-cyan)' : 'transparent', color: checkoutTab === 'restore' ? '#0f172a' : 'var(--text-muted)', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+              >
+                Restore License
+              </button>
+            </div>
+
+            {checkoutTab === 'plans' ? (
+              <form onSubmit={handleActivateLicense}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                  {/* Option 1: Pro Monthly */}
+                  <div 
+                    onClick={() => setCheckoutPlan('pro_monthly')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: checkoutPlan === 'pro_monthly' ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      background: checkoutPlan === 'pro_monthly' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.02)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: '700', fontSize: '15px' }}>Bookkeeper Pro</span>
+                        <span style={{ fontSize: '10px', background: 'var(--accent-cyan)', color: '#0f172a', fontWeight: '800', padding: '2px 8px', borderRadius: '9999px', textTransform: 'uppercase' }}>Most Popular</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>Unlimited statements • Batch conversion • Priority OCR</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '18px', fontWeight: '800' }}>$19.99</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>/mo</span>
+                    </div>
+                  </div>
+
+                  {/* Option 2: Single Pass */}
+                  <div 
+                    onClick={() => setCheckoutPlan('single')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: checkoutPlan === 'single' ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      background: checkoutPlan === 'single' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.02)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <span style={{ fontWeight: '700', fontSize: '15px' }}>Single Statement Pass</span>
+                      <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>1 statement conversion (Up to 50 pages)</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '18px', fontWeight: '800' }}>$4.99</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Your Email Address (For receipt & license key):</label>
+                  <input 
+                    type="email" 
+                    placeholder="accountant@company.com"
+                    value={checkoutEmail}
+                    onChange={(e) => setCheckoutEmail(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '14px', outline: 'none' }}
+                  />
+                </div>
+
+                {checkoutError && <p style={{ color: 'var(--accent-rose)', fontSize: '13px', marginBottom: '12px' }}>{checkoutError}</p>}
+                {checkoutMessage && <p style={{ color: 'var(--accent-emerald)', fontSize: '13px', marginBottom: '12px' }}>{checkoutMessage}</p>}
+
+                <button 
+                  type="submit" 
+                  disabled={checkoutLoading}
+                  className="gradient-btn" 
+                  style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: '700' }}
+                >
+                  {checkoutLoading ? 'Redirecting to Stripe...' : `Pay with Stripe (${checkoutPlan === 'single' ? '$4.99' : '$19.99/mo'})`}
+                </button>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '16px', fontSize: '12px', color: 'var(--text-dim)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Lock size={12} /> Powered by Stripe</span>
+                  <span>•</span>
+                  <span>256-bit Encryption</span>
+                  <span>•</span>
+                  <span>Cancel Anytime</span>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleRestoreLicense}>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Purchased before on another computer? Enter your purchase email address to restore unlimited access instantly.
+                </p>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Purchase Email Address:</label>
+                  <input 
+                    type="email" 
+                    placeholder="name@example.com"
+                    value={checkoutEmail}
+                    onChange={(e) => setCheckoutEmail(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '14px', outline: 'none' }}
+                  />
+                </div>
+
+                {checkoutError && <p style={{ color: 'var(--accent-rose)', fontSize: '13px', marginBottom: '12px' }}>{checkoutError}</p>}
+                {checkoutMessage && <p style={{ color: 'var(--accent-emerald)', fontSize: '13px', marginBottom: '12px' }}>{checkoutMessage}</p>}
+
+                <button 
+                  type="submit" 
+                  disabled={checkoutLoading}
+                  className="gradient-btn" 
+                  style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: '700' }}
+                >
+                  {checkoutLoading ? 'Searching...' : 'Restore My License'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Guide Modal (Popup with tabs) */}
+      {isGuideOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="glass-panel" style={{ maxWidth: '640px', width: '100%', padding: '32px', background: '#0f172a', border: '1px solid var(--accent-cyan)', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+            <button 
+              onClick={() => setIsGuideOpen(false)}
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <BookOpen color="var(--accent-cyan)" size={24} />
+              <h3 style={{ fontSize: '20px', fontWeight: '800' }}>Step-by-Step Quick Guide</h3>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '24px' }}>
+              Follow these simple steps to download your statement and convert it in under 60 seconds.
+            </p>
+
+            {/* Guide Tabs */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+              <button 
+                onClick={() => setGuideTab('step1')} 
+                style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: guideTab === 'step1' ? 'var(--accent-cyan)' : 'transparent', color: guideTab === 'step1' ? '#0f172a' : 'var(--text-muted)', fontWeight: '600', fontSize: '12px', cursor: 'pointer' }}
+              >
+                1. Download Statement (PDF)
+              </button>
+              <button 
+                onClick={() => setGuideTab('step2')} 
+                style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: guideTab === 'step2' ? 'var(--accent-cyan)' : 'transparent', color: guideTab === 'step2' ? '#0f172a' : 'var(--text-muted)', fontWeight: '600', fontSize: '12px', cursor: 'pointer' }}
+              >
+                2. Convert in LedgerSnap
+              </button>
+              <button 
+                onClick={() => setGuideTab('step3')} 
+                style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: guideTab === 'step3' ? 'var(--accent-cyan)' : 'transparent', color: guideTab === 'step3' ? '#0f172a' : 'var(--text-muted)', fontWeight: '600', fontSize: '12px', cursor: 'pointer' }}
+              >
+                3. Import to QuickBooks (.QBO)
+              </button>
+            </div>
+
+            {/* Tab 1 Content */}
+            {guideTab === 'step1' && (
+              <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--text-muted)' }}>
+                <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: '700' }}>Which file should you download from your bank?</h4>
+                <p style={{ marginBottom: '12px' }}>
+                  Log in to your online banking portal (Chase, Bank of America, Wells Fargo, Citi, or any international bank):
+                </p>
+                <ol style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  <li><strong>Account Statements:</strong> Navigate to <em>"Statements & Documents"</em> or <em>"Account Activity"</em>.</li>
+                  <li><strong>Select Period:</strong> Choose your desired statement month or billing cycle.</li>
+                  <li><strong>Download Official PDF:</strong> Always click <em>"Download Statement (PDF)"</em> rather than printing a web page.</li>
+                  <li><em>Credit Cards:</em> Monthly statement PDFs from Visa, Mastercard, and American Express are also fully supported.</li>
+                </ol>
+                <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.2)', fontSize: '12px', color: '#93c5fd' }}>
+                  💡 <strong>Zero-Knowledge Privacy:</strong> Statements are processed purely in ephemeral RAM and instantly deleted. Your financial data is never stored, sold, or shared with third parties.
+                </div>
+              </div>
+            )}
+
+            {/* Tab 2 Content */}
+            {guideTab === 'step2' && (
+              <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--text-muted)' }}>
+                <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: '700' }}>How to convert with LedgerSnap?</h4>
+                <ol style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  <li>Drag and drop your PDF bank statement into the upload box on the home page.</li>
+                  <li>The engine extracts transaction dates, payees, deposits, payments, and balances into an instant live preview.</li>
+                  <li>Select your export format:
+                    <ul style={{ marginTop: '4px', paddingLeft: '16px' }}>
+                      <li><strong>QuickBooks (.QBO):</strong> For direct 1-click import into QuickBooks Online & Desktop.</li>
+                      <li><strong>Excel (.XLSX):</strong> A formatted spreadsheet complete with debit/credit balance formulas.</li>
+                      <li><strong>CSV (.CSV):</strong> Clean comma-separated format for Xero, Wave, or custom ledgers.</li>
+                    </ul>
+                  </li>
+                  <li>Click <strong>Download</strong> and your certified file is saved to your computer in seconds!</li>
+                </ol>
+              </div>
+            )}
+
+            {/* Tab 3 Content */}
+            {guideTab === 'step3' && (
+              <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--text-muted)' }}>
+                <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: '700' }}>How to import .QBO into QuickBooks Online?</h4>
+                <ol style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  <li>Log in to your <strong>QuickBooks Online</strong> account.</li>
+                  <li>Navigate to <strong>Bookkeeping</strong> &gt; <strong>Transactions</strong> &gt; <strong>Bank transactions</strong>.</li>
+                  <li>In the top right corner, click the small arrow next to <em>"Link account"</em> and select <strong>"Upload from file"</strong>.</li>
+                  <li>Select the downloaded <strong>.QBO</strong> file from LedgerSnap.</li>
+                  <li>Choose your matching bank register and click <strong>Continue</strong>. All transactions match automatically with zero manual entry!</li>
+                </ol>
+              </div>
+            )}
+
+            <button 
+              onClick={() => setIsGuideOpen(false)}
+              className="gradient-btn" 
+              style={{ width: '100%', marginTop: '24px', padding: '10px' }}
+            >
+              Got It, Let's Convert!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer style={{ borderTop: '1px solid var(--border-subtle)', padding: '40px 24px', background: 'rgba(10, 14, 23, 0.95)', marginTop: 'auto', textAlign: 'center', fontSize: '13px', color: 'var(--text-dim)' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'linear-gradient(135deg, #38bdf8, #6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FileText color="#fff" size={14} />
+            </div>
+            <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '16px' }}>LedgerSnap</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <span onClick={() => setIsGuideOpen(true)} style={{ color: 'var(--accent-cyan)', cursor: 'pointer' }}>Quick Guide</span>
+            <a href="#how-it-works" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>How it works</a>
+            <a href="#pricing" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>Pricing</a>
+            <a href="#faq" style={{ color: 'var(--text-dim)', textDecoration: 'none' }}>FAQ</a>
+            <span style={{ color: 'var(--text-dim)' }}>Privacy & SOC2 Compliant</span>
+          </div>
+
+          <p>© 2026 LedgerSnap. Built for CPAs, bookkeepers, and modern businesses.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}

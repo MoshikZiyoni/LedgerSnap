@@ -1,0 +1,42 @@
+# Python virtual environments & bytecode
+venv/
+.venv/
+env/
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+
+# Local SQLite databases & uploads
+*.db
+*.sqlite
+*.sqlite3
+backend/banktoqbo.db
+uploads/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node / Frontend build artifacts
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+frontend/dist-ssr/
+*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
