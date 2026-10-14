@@ -66,9 +66,9 @@ def generate_license_key() -> str:
     part3 = secrets.token_hex(2).upper()
     return f"LSNAP-{part1}-{part2}-{part3}"
 
-def create_license(email: str, plan: str = "pro_monthly") -> Dict[str, Any]:
+def create_license(email: str, plan: str = "pro_monthly", custom_key: Optional[str] = None) -> Dict[str, Any]:
     """Creates a new license in the database (called by webhook or checkout)."""
-    license_key = generate_license_key()
+    license_key = custom_key.strip().upper() if custom_key else generate_license_key()
     credits = 1 if plan == "single" else 999999
 
     with get_connection() as conn:

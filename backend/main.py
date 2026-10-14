@@ -349,10 +349,13 @@ async def lemonsqueezy_webhook(request: Request):
     attributes = data.get("data", {}).get("attributes", {})
     custom_data = data.get("meta", {}).get("custom_data", {})
 
-    if event_name in ["order_created", "subscription_created"]:
+    if event_name in ["order_created", "subscription_created", "license_key_created"]:
         email = attributes.get("user_email") or custom_data.get("email") or "customer@ledgersnap.com"
-        plan = custom_data.get("plan") or ("single" if "single" in attributes.get("first_order_item", {}).get("product_name", "").lower() else "pro_monthly")
-        lic = create_license(email=email, plan=plan)
+        plan = custom_data.get("plan") or ("single" if "single" in str(attributes.get("first_order_item", {}).get("product_name", "")).lower() else "pro_monthly")
+        
+        # Check if Lemon Squeezy provided a license key
+        ls_license_key = attributes.get("key") or (attributes.get("first_order_item") or {}).get("license_key") or None
+        lic = create_license(email=email, plan=plan, custom_key=ls_license_key)
         return {"status": "success", "license_key": lic["license_key"], "plan": lic["plan"]}
 
     return {"status": "ignored", "event_name": event_name}
