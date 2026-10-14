@@ -41,10 +41,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration for React frontend
+# CORS configuration for React frontend (Cloudflare Pages, ledger-snap.com, localhost)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://ledger-snap.com",
+        "https://www.ledger-snap.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:5173",
+    ],
+    allow_origin_regex=r"https://.*\.pages\.dev|https://.*ledger-snap\.com|http://localhost:.*|http://127\.0\.0\.1:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -231,7 +239,6 @@ def create_checkout_session(payload: Dict[str, Any]):
         try:
             if plan == "single":
                 session = stripe.checkout.Session.create(
-                    payment_method_types=["card"],
                     mode="payment",
                     customer_email=email if email else None,
                     line_items=[{
@@ -251,7 +258,6 @@ def create_checkout_session(payload: Dict[str, Any]):
                 )
             else:
                 session = stripe.checkout.Session.create(
-                    payment_method_types=["card"],
                     mode="subscription",
                     customer_email=email if email else None,
                     line_items=[{
