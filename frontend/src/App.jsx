@@ -3,7 +3,8 @@ import {
   FileText, UploadCloud, CheckCircle2, AlertCircle, Download, 
   Search, ShieldCheck, Zap, ArrowRight, Lock, Sparkles, Building2,
   RefreshCw, DollarSign, BarChart3, HelpCircle, ChevronDown, Check,
-  BookOpen, X, ExternalLink, PieChart, Filter, TrendingDown, Layers
+  BookOpen, X, ExternalLink, PieChart, Filter, TrendingDown, Layers,
+  Eye, Cookie
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -137,6 +138,64 @@ export default function App() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
+
+  // Accessibility & Cookie Consent State
+  const [showCookieBanner, setShowCookieBanner] = useState(() => {
+    try {
+      return !localStorage.getItem('ls_cookie_consent');
+    } catch {
+      return false;
+    }
+  });
+
+  const [isA11yOpen, setIsA11yOpen] = useState(false);
+  const [a11ySettings, setA11ySettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ls_a11y_settings');
+      return saved ? JSON.parse(saved) : {
+        contrast: false,
+        largeText: false,
+        highlightLinks: false,
+        readableFont: false,
+      };
+    } catch {
+      return { contrast: false, largeText: false, highlightLinks: false, readableFont: false };
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('ls_a11y_settings', JSON.stringify(a11ySettings));
+    } catch (e) {
+      console.error(e);
+    }
+    document.body.classList.toggle('high-contrast', !!a11ySettings.contrast);
+    document.body.classList.toggle('large-text', !!a11ySettings.largeText);
+    document.body.classList.toggle('highlight-links', !!a11ySettings.highlightLinks);
+    document.body.classList.toggle('readable-font', !!a11ySettings.readableFont);
+  }, [a11ySettings]);
+
+  const handleAcceptCookies = (type = 'all') => {
+    try {
+      localStorage.setItem('ls_cookie_consent', type);
+    } catch (e) {
+      console.error(e);
+    }
+    setShowCookieBanner(false);
+  };
+
+  const toggleA11y = (key) => {
+    setA11ySettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const resetA11y = () => {
+    setA11ySettings({
+      contrast: false,
+      largeText: false,
+      highlightLinks: false,
+      readableFont: false,
+    });
+  };
 
   // Sync free tier status by IP & persistent client ID from server upon mount
   React.useEffect(() => {
@@ -1837,6 +1896,253 @@ export default function App() {
           <p>© 2026 LedgerSnap. Built for CPAs, bookkeepers, and modern businesses.</p>
         </div>
       </footer>
+
+      {/* Cookie Consent Banner */}
+      {showCookieBanner && (
+        <aside 
+          aria-label="Cookie Consent Banner" 
+          role="region"
+          className="cookie-banner"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            maxWidth: '440px',
+            width: 'calc(100% - 48px)',
+            background: 'rgba(15, 23, 42, 0.96)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.15)',
+            backdropFilter: 'blur(16px)',
+            zIndex: 9999,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-cyan)',
+              flexShrink: 0
+            }}>
+              <Cookie size={22} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', margin: '0 0 4px 0' }}>
+                We Value Your Privacy & Cookies
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                LedgerSnap uses essential cookies & local storage to manage secure conversions, prevent abuse, and save your preferences. We never sell your financial data.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => handleAcceptCookies('essential')}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-muted)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+            >
+              Essential Only
+            </button>
+            <button
+              onClick={() => handleAcceptCookies('all')}
+              className="gradient-btn"
+              style={{
+                padding: '8px 18px',
+                fontSize: '13px',
+                fontWeight: '600',
+                borderRadius: '8px'
+              }}
+            >
+              Accept All Cookies
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Accessibility Floating Trigger Button */}
+      <button
+        onClick={() => setIsA11yOpen(prev => !prev)}
+        className="a11y-widget-btn"
+        aria-label="Toggle Accessibility Options Menu"
+        aria-expanded={isA11yOpen}
+        title="Accessibility Settings (WCAG Compliant)"
+      >
+        <Eye size={20} />
+      </button>
+
+      {/* Accessibility Settings Modal */}
+      {isA11yOpen && (
+        <aside
+          role="dialog"
+          aria-label="Accessibility Settings"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            bottom: '76px',
+            left: '24px',
+            width: '320px',
+            maxWidth: 'calc(100vw - 48px)',
+            background: 'rgba(15, 23, 42, 0.98)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 20px 45px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.2)',
+            backdropFilter: 'blur(16px)',
+            zIndex: 9998,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Eye size={18} style={{ color: 'var(--accent-cyan)' }} />
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', margin: 0 }}>
+                Accessibility Controls
+              </h3>
+            </div>
+            <button
+              onClick={() => setIsA11yOpen(false)}
+              aria-label="Close Accessibility Menu"
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button
+              onClick={() => toggleA11y('contrast')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: a11ySettings.contrast ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                background: a11ySettings.contrast ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                color: a11ySettings.contrast ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <span>🌓 High Contrast</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: a11ySettings.contrast ? 'var(--accent-cyan)' : 'var(--text-dim)' }}>
+                {a11ySettings.contrast ? 'ON' : 'OFF'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => toggleA11y('largeText')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: a11ySettings.largeText ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                background: a11ySettings.largeText ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                color: a11ySettings.largeText ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <span>🔍 Larger Text (+12%)</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: a11ySettings.largeText ? 'var(--accent-cyan)' : 'var(--text-dim)' }}>
+                {a11ySettings.largeText ? 'ON' : 'OFF'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => toggleA11y('highlightLinks')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: a11ySettings.highlightLinks ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                background: a11ySettings.highlightLinks ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                color: a11ySettings.highlightLinks ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <span>🔗 Highlight All Links</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: a11ySettings.highlightLinks ? 'var(--accent-cyan)' : 'var(--text-dim)' }}>
+                {a11ySettings.highlightLinks ? 'ON' : 'OFF'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => toggleA11y('readableFont')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: a11ySettings.readableFont ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                background: a11ySettings.readableFont ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                color: a11ySettings.readableFont ? '#fff' : 'var(--text-muted)',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
+            >
+              <span>📖 Standard Readable Font</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: a11ySettings.readableFont ? 'var(--accent-cyan)' : 'var(--text-dim)' }}>
+                {a11ySettings.readableFont ? 'ON' : 'OFF'}
+              </span>
+            </button>
+          </div>
+
+          <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              onClick={resetA11y}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-dim)',
+                fontSize: '12px',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Reset to default
+            </button>
+            <button
+              onClick={() => setIsA11yOpen(false)}
+              className="gradient-btn"
+              style={{ padding: '6px 14px', fontSize: '12px', borderRadius: '6px' }}
+            >
+              Done
+            </button>
+          </div>
+        </aside>
+      )}
     </div>
   );
 }
