@@ -65,13 +65,13 @@ export default function Footer({ onNavigate }) {
                 Contact &amp; Billing Support
               </span>
               <a 
-                href="mailto:Moshiktm1994@gmail.com" 
+                href="mailto:support@ledger-snap.com" 
                 style={{ color: '#fff', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', transition: 'color 0.2s' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                 onMouseLeave={(e) => e.currentTarget.style.color = '#fff'}
               >
                 <Mail size={15} color="var(--accent-cyan)" />
-                Moshiktm1994@gmail.com
+                support@ledger-snap.com
               </a>
               <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginTop: '6px' }}>
                 Questions, statement parsing inquiries, or enterprise firm access.
@@ -124,6 +124,44 @@ export default function Footer({ onNavigate }) {
                 <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
                   ✓ Bypasses 90-day Intuit bank feed limits with validated .QBO files.
                 </span>
+              </li>
+              <li style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent-cyan)', fontWeight: '700' }}>
+                  Free In-Browser Accounting Tools
+                </span>
+              </li>
+              <li>
+                <a
+                  href="/tools/qbo-viewer-checker"
+                  onClick={(e) => handleLinkClick(e, '/tools/qbo-viewer-checker')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  ⚡ QBO File Viewer &amp; Error OL-222 Checker
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/tools/csv-to-qbo"
+                  onClick={(e) => handleLinkClick(e, '/tools/csv-to-qbo')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  📄 Free CSV to QBO Web Connect Converter
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/tools/ofx-qfx-to-qbo"
+                  onClick={(e) => handleLinkClick(e, '/tools/ofx-qfx-to-qbo')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  🔄 Free OFX / QFX to QBO Converter
+                </a>
               </li>
             </ul>
           </div>

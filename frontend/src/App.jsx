@@ -3,8 +3,8 @@ import {
   UploadCloud, CheckCircle2, AlertCircle, Download, 
   Search, ShieldCheck, Zap, Lock, Sparkles,
   RefreshCw, DollarSign, BarChart3, ChevronDown, Check,
-  BookOpen, X, PieChart,
-  Eye, Cookie, Cpu
+  BookOpen, X, PieChart, Plus, Trash2, Edit3, Sliders,
+  Eye, Cookie, Cpu, Wrench
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { initializePaddle } from '@paddle/paddle-js';
@@ -13,10 +13,13 @@ import BankLandingPage from './components/BankLandingPage';
 import ComparisonPage from './components/ComparisonPage';
 import GuidePage from './components/GuidePage';
 import LegalPage from './components/LegalPage';
+import ToolsPage from './components/ToolsPage';
 import Footer from './components/Footer';
 import { SEO_BANKS } from './data/seoBanks';
 import { SEO_COMPARISONS } from './data/seoComparisons';
 import { SEO_GUIDES } from './data/seoGuides';
+import { SEO_TOOLS } from './data/seoTools';
+import { cleanPayeeName, generateClientQbo } from './utils/qboUtils';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
 
@@ -123,6 +126,22 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [hoveredCategory, setHoveredCategory] = useState(null);
+
+  // Interactive Review Grid, Reconciliation, and Export Settings State
+  const [editableTransactions, setEditableTransactions] = useState([]);
+  const [exportSettings, setExportSettings] = useState({
+    currency: 'USD',
+    accountType: 'CHECKING',
+    accountId: '123456789',
+    bankId: '3000',
+    intuBid: '3000',
+    exportMode: 'utf8',
+    dateFormat: 'auto',
+    openingBalance: 0,
+    statementEndingBalance: 0
+  });
+  const [aiCleanedSuccess, setAiCleanedSuccess] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('Extracting page 1 of 1 — Verifying mathematical balance...');
 
   // Licensing & Checkout State
   const [license, setLicense] = useState(() => {
@@ -357,6 +376,114 @@ export default function App() {
     }
   }, []);
 
+  const initializeConversionSession = (result) => {
+    setConversionData(result);
+    setSelectedCategory('all');
+    setAiCleanedSuccess(false);
+
+    const txns = (result.preview || result.all_transactions || []).map((t, idx) => ({
+      id: idx + 1,
+      date: t.date || '',
+      description: t.description || t.name || 'Transaction',
+      memo: t.memo || t.description || 'Transaction',
+      amount: parseFloat(t.amount || 0),
+      balance: t.balance !== null && t.balance !== undefined ? parseFloat(t.balance) : null,
+      type: parseFloat(t.amount || 0) >= 0 ? 'Credit' : 'Debit'
+    }));
+    setEditableTransactions(txns);
+
+    const bankStr = (result.bank_name || '');
+    const isIsraeli = ['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => bankStr.includes(b));
+    const detectedCurr = result.summary?.currency || (isIsraeli ? 'ILS' : 'USD');
+    const isCC = ['MAX', 'Isracard', 'Cal', 'Credit Card', 'Amex', 'Visa', 'Mastercard'].some(b => bankStr.includes(b));
+
+    const openBal = result.summary?.opening_balance !== null && result.summary?.opening_balance !== undefined 
+      ? result.summary.opening_balance 
+      : 0;
+    const endBal = result.summary?.ending_balance !== null && result.summary?.ending_balance !== undefined
+      ? result.summary.ending_balance
+      : (result.summary?.net_change !== undefined ? openBal + result.summary.net_change : 0);
+
+    setExportSettings({
+      currency: detectedCurr,
+      accountType: isCC ? 'CREDITCARD' : 'CHECKING',
+      accountId: result.summary?.account_id || '123456789',
+      bankId: result.summary?.bank_id || '3000',
+      intuBid: '3000',
+      exportMode: 'utf8',
+      dateFormat: result.summary?.detected_date_format || (isIsraeli ? 'DD/MM/YYYY' : 'auto'),
+      openingBalance: openBal,
+      statementEndingBalance: endBal
+    });
+  };
+
+  const handleCellChange = (targetId, field, value) => {
+    setEditableTransactions(prev => prev.map(item => {
+      if (item.id !== targetId) return item;
+      const updated = { ...item };
+
+      if (field === 'date') {
+        updated.date = value;
+      } else if (field === 'description') {
+        updated.description = value.slice(0, 32);
+      } else if (field === 'memo') {
+        updated.memo = value;
+      } else if (field === 'debit') {
+        const val = parseFloat(value) || 0;
+        updated.amount = -Math.abs(val);
+        updated.type = 'Debit';
+      } else if (field === 'credit') {
+        const val = parseFloat(value) || 0;
+        updated.amount = Math.abs(val);
+        updated.type = 'Credit';
+      } else if (field === 'amount') {
+        const val = parseFloat(value) || 0;
+        updated.amount = val;
+        updated.type = val >= 0 ? 'Credit' : 'Debit';
+      }
+
+      return updated;
+    }));
+  };
+
+  const handleAddTransaction = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const newId = Date.now();
+    setEditableTransactions(prev => [
+      {
+        id: newId,
+        date: today,
+        description: 'New Payee',
+        memo: 'Manual Entry',
+        amount: 0.00,
+        balance: null,
+        type: 'Credit'
+      },
+      ...prev
+    ]);
+  };
+
+  const handleDeleteTransaction = (targetId) => {
+    setEditableTransactions(prev => prev.filter(t => t.id !== targetId));
+  };
+
+  const handleAiPayeeCleanup = () => {
+    let count = 0;
+    setEditableTransactions(prev => prev.map(t => {
+      const raw = t.memo || t.description;
+      const cleaned = cleanPayeeName(raw, 32);
+      if (cleaned !== t.description) count++;
+      return {
+        ...t,
+        description: cleaned,
+        memo: raw // preserve full raw original text in memo
+      };
+    }));
+    setAiCleanedSuccess(true);
+    triggerConfetti();
+    setTimeout(() => setAiCleanedSuccess(false), 5000);
+  };
+
   const handleFileUpload = async (file) => {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -376,9 +503,20 @@ export default function App() {
     setError(null);
     setIsLoading(true);
     setParsingStep(1);
+    setUploadProgressText(`Step 1/4: Reading PDF layout and detecting bank origin (${file.name})...`);
 
-    const timer1 = setTimeout(() => setParsingStep(2), 900);
-    const timer2 = setTimeout(() => setParsingStep(3), 1800);
+    const timer1 = setTimeout(() => {
+      setParsingStep(2);
+      setUploadProgressText('Step 2/4: Extracting transaction rows & running OCR engine...');
+    }, 800);
+    const timer2 = setTimeout(() => {
+      setParsingStep(3);
+      setUploadProgressText('Step 3/4: Mathematical checksum reconciliation (Opening + Credits - Debits = Closing)...');
+    }, 1600);
+    const timer3 = setTimeout(() => {
+      setParsingStep(4);
+      setUploadProgressText('Step 4/4: Building certified QuickBooks (.QBO) Web Connect structures...');
+    }, 2400);
 
     if (window.trackLedgerEvent) {
       window.trackLedgerEvent('file_uploaded', { filename: file.name });
@@ -413,8 +551,7 @@ export default function App() {
       }
 
       const result = await response.json();
-      setConversionData(result);
-      setSelectedCategory('all');
+      initializeConversionSession(result);
       triggerConfetti();
 
       // If user converted on free tier, record locally as consumed
@@ -435,6 +572,7 @@ export default function App() {
     } finally {
       clearTimeout(timer1);
       clearTimeout(timer2);
+      clearTimeout(timer3);
       setIsLoading(false);
       setParsingStep(1);
     }
@@ -444,12 +582,14 @@ export default function App() {
     setError(null);
     setIsLoading(true);
     setParsingStep(1);
+    setUploadProgressText('Step 1/3: Reading Bank Statement PDF Layout...');
 
-    // Realistic step-by-step progress animation over 2.1 seconds
     await new Promise(r => setTimeout(r, 650));
     setParsingStep(2);
+    setUploadProgressText('Step 2/3: Extracting Transactions & Verifying Math Checksums...');
     await new Promise(r => setTimeout(r, 750));
     setParsingStep(3);
+    setUploadProgressText('Step 3/3: Building Certified QuickBooks (.QBO) & Excel...');
     await new Promise(r => setTimeout(r, 700));
 
     let sampleData = { ...SAMPLE_DEMO_DATA };
@@ -465,8 +605,7 @@ export default function App() {
       };
     }
 
-    setConversionData(sampleData);
-    setSelectedCategory('all');
+    initializeConversionSession(sampleData);
     setIsLoading(false);
     setParsingStep(1);
     triggerConfetti();
@@ -491,11 +630,31 @@ export default function App() {
 
     const fileId = conversionData.file_id || 'demo-sample-chase-statement';
     const cid = getClientId();
-    const licParam = license?.license_key ? `&license_key=${encodeURIComponent(license.license_key)}` : '';
-    const downloadUrl = `${API_BASE}/api/download/${fileId}?format=${selectedFormat}&client_id=${cid}${licParam}`;
+    const baseFilename = (conversionData.filename || 'statement').replace(/\.pdf$/i, '');
+    const currentTxns = editableTransactions.length > 0 ? editableTransactions : (conversionData.preview || []);
 
     try {
-      const res = await fetch(downloadUrl);
+      // 1. Send export request with user-edited transactions and settings
+      const res = await fetch(`${API_BASE}/api/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactions: currentTxns,
+          currency: exportSettings.currency,
+          account_id: exportSettings.accountId,
+          bank_id: exportSettings.bankId,
+          account_type: exportSettings.accountType,
+          export_mode: exportSettings.exportMode,
+          intu_bid: exportSettings.intuBid,
+          date_format: exportSettings.dateFormat,
+          format: selectedFormat,
+          filename: conversionData.filename || 'statement.pdf',
+          file_id: fileId,
+          client_id: cid,
+          license_key: license?.license_key
+        })
+      });
+
       if (res.status === 402) {
         setFreeUsed(1);
         try { localStorage.setItem('ls_free_used', '1'); } catch {}
@@ -506,30 +665,69 @@ export default function App() {
         return;
       }
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.detail || `Download failed with status ${res.status}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${baseFilename}.${selectedFormat}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        triggerConfetti();
+
+        if (!hasActiveLicense) {
+          setFreeUsed(1);
+          try { localStorage.setItem('ls_free_used', '1'); } catch {}
+        }
+        return;
       }
+    } catch (e) {
+      console.warn("API export endpoint unavailable, falling back to client-side generator:", e);
+    }
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const baseFilename = (conversionData.filename || 'statement').replace(/\.pdf$/i, '');
-      link.setAttribute('download', `${baseFilename}.${selectedFormat}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      triggerConfetti();
-
-      if (!hasActiveLicense) {
-        setFreeUsed(1);
-        try { localStorage.setItem('ls_free_used', '1'); } catch {}
-      }
-
-      if (window.trackLedgerEvent) {
-        window.trackLedgerEvent('download_completed', { format: selectedFormat });
+    // 2. Client-Side Fallback Generator
+    try {
+      if (selectedFormat === 'qbo') {
+        const qboContent = generateClientQbo({
+          transactions: currentTxns,
+          bankName: conversionData.bank_name || 'Bank Statement',
+          accountId: exportSettings.accountId,
+          bankId: exportSettings.bankId,
+          currency: exportSettings.currency,
+          accountType: exportSettings.accountType,
+          exportMode: exportSettings.exportMode,
+          intuBid: exportSettings.intuBid,
+          dateFormat: exportSettings.dateFormat === 'auto' ? 'DD/MM/YYYY' : exportSettings.dateFormat,
+          openingBalance: exportSettings.openingBalance,
+          endingBalance: exportSettings.statementEndingBalance
+        });
+        const blob = new Blob([qboContent], { type: 'application/x-ofx' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${baseFilename}.qbo`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        triggerConfetti();
+      } else if (selectedFormat === 'csv') {
+        let csv = "Date,Description,Amount,Type\n";
+        for (const t of currentTxns) {
+          csv += `"${t.date}","${(t.description || '').replace(/"/g, '""')}",${t.amount},"${t.amount >= 0 ? 'Credit' : 'Debit'}"\n`;
+        }
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${baseFilename}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        triggerConfetti();
       }
     } catch (err) {
       console.error('Download error:', err);
@@ -645,24 +843,45 @@ export default function App() {
     }
   };
 
+  const allCurrentTransactions = editableTransactions.length > 0 ? editableTransactions : (conversionData?.preview || []);
+
   const monthFiltered = selectedMonth === 'all'
-    ? (conversionData?.preview || [])
-    : (conversionData?.preview || []).filter(t => {
+    ? allCurrentTransactions
+    : allCurrentTransactions.filter(t => {
         const parts = t.date.split('/');
         return parts.length === 3 && `${parts[1]}/${parts[2]}` === selectedMonth;
       });
 
   const categoryFiltered = selectedCategory === 'all'
     ? monthFiltered
-    : monthFiltered.filter(t => categorizeTransaction(t.description, t.amount).category === selectedCategory);
+    : monthFiltered.filter(t => categorizeTransaction(t.description || t.name, t.amount).category === selectedCategory);
 
   const filteredTransactions = categoryFiltered.filter(item => 
-    item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.description || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.memo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.date.includes(searchQuery)
   );
 
-  const activeCredits = monthFiltered.reduce((sum, t) => t.amount > 0 ? sum + t.amount : sum, 0);
-  const activeDebits = monthFiltered.reduce((sum, t) => t.amount < 0 ? sum + Math.abs(t.amount) : sum, 0);
+  const activeCredits = allCurrentTransactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+  const activeDebits = allCurrentTransactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const netChange = activeCredits - activeDebits;
+  const openingBal = parseFloat(exportSettings.openingBalance) || 0;
+  const calcEndingBalance = openingBal + netChange;
+  const stmtEndingBalance = exportSettings.statementEndingBalance !== null && exportSettings.statementEndingBalance !== undefined 
+    ? parseFloat(exportSettings.statementEndingBalance) 
+    : calcEndingBalance;
+  const balanceDiscrepancy = Math.abs(calcEndingBalance - stmtEndingBalance);
+  const isReconciled = balanceDiscrepancy < 0.01;
+
+  const CURRENCY_SYMBOLS = {
+    USD: '$',
+    ILS: '₪',
+    EUR: '€',
+    GBP: '£',
+    CAD: 'C$',
+    AUD: 'A$'
+  };
+  const curr = CURRENCY_SYMBOLS[exportSettings.currency] || '$';
 
   // Compute expense categories for spending distribution chart
   const expenseTransactions = monthFiltered.filter(t => t.amount < 0);
@@ -670,7 +889,7 @@ export default function App() {
   
   const categoryMap = {};
   expenseTransactions.forEach(t => {
-    const cat = categorizeTransaction(t.description, t.amount);
+    const cat = categorizeTransaction(t.description || t.name, t.amount);
     if (!categoryMap[cat.category]) {
       categoryMap[cat.category] = {
         name: cat.category,
@@ -717,6 +936,14 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+          <a 
+            href="/tools/qbo-viewer-checker" 
+            onClick={(e) => { e.preventDefault(); handleNavigate('/tools/qbo-viewer-checker'); }} 
+            className="desktop-nav-link" 
+            style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontSize: '13px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(56, 189, 248, 0.08)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)' }}
+          >
+            <Wrench size={14} /> Free QBO Tools
+          </a>
           <button 
             onClick={() => setIsGuideOpen(true)}
             style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -815,6 +1042,20 @@ export default function App() {
         return null;
       })()}
 
+      {!conversionData && currentPath.startsWith('/tools/') && (() => {
+        const slug = currentPath.replace('/tools/', '').replace(/\/$/, '');
+        const tool = SEO_TOOLS.find(t => t.slug === slug);
+        if (tool) {
+          return (
+            <ToolsPage 
+              tool={tool} 
+              onNavigate={handleNavigate} 
+            />
+          );
+        }
+        return null;
+      })()}
+
       {!conversionData && (currentPath === '/terms' || currentPath === '/privacy' || currentPath === '/refund') && (
         <LegalPage 
           pageType={currentPath.replace('/', '')} 
@@ -823,7 +1064,7 @@ export default function App() {
       )}
 
       {/* Homepage & Studio Content (Rendered on '/' or when a conversion is active) */}
-      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/') && currentPath !== '/terms' && currentPath !== '/privacy' && currentPath !== '/refund')) && (
+      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/') && !currentPath.startsWith('/tools/') && currentPath !== '/terms' && currentPath !== '/privacy' && currentPath !== '/refund')) && (
       <main style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '48px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           {/* Trust & Architecture Badges (Task 2) */}
@@ -882,13 +1123,11 @@ export default function App() {
                     <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' }}>
                       <RefreshCw className="animate-spin" size={36} />
                     </div>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '10px' }}>
-                      {parsingStep === 1 && "🔍 Step 1/3: Reading Bank Statement PDF Layout..."}
-                      {parsingStep === 2 && "⚡ Step 2/3: Extracting Transactions & Verifying Math Checksums..."}
-                      {parsingStep === 3 && "✨ Step 3/3: Building Certified QuickBooks (.QBO) & Excel..."}
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '10px', color: '#fff' }}>
+                      {uploadProgressText}
                     </h3>
-                    <p className="shimmer-text" style={{ fontSize: '15px', fontWeight: '600', maxWidth: '500px', margin: '0 auto' }}>
-                      Deterministic in-memory OCR extraction. 100% private & secure.
+                    <p className="shimmer-text" style={{ fontSize: '14px', fontWeight: '600', maxWidth: '520px', margin: '0 auto' }}>
+                      ⚡ Real-time OCR parsing &amp; mathematical balance verification. 100% private in-memory execution.
                     </p>
                   </div>
                 ) : (
@@ -1066,11 +1305,242 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Summary Reconciliation & Mathematical Verification Bar */}
+              <div style={{
+                background: isReconciled 
+                  ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 78, 59, 0.25))' 
+                  : 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(153, 27, 27, 0.25))',
+                border: isReconciled ? '1.5px solid rgba(16, 185, 129, 0.35)' : '1.5px solid rgba(239, 68, 68, 0.45)',
+                borderRadius: '16px',
+                padding: '20px 24px',
+                marginBottom: '24px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.25)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: isReconciled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {isReconciled ? <ShieldCheck size={20} color="#10b981" /> : <AlertCircle size={20} color="#ef4444" />}
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        Statement Reconciliation Equation (Accounting Audit)
+                        <span style={{
+                          fontSize: '11px',
+                          padding: '2px 10px',
+                          borderRadius: '9999px',
+                          background: isReconciled ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                          color: isReconciled ? '#34d399' : '#f87171',
+                          border: isReconciled ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.5)',
+                          fontWeight: '700'
+                        }}>
+                          {isReconciled ? '✓ 100% Reconciled' : `⚠ Discrepancy: ${curr}${balanceDiscrepancy.toFixed(2)}`}
+                        </span>
+                      </h3>
+                      <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: '2px 0 0 0' }}>
+                        Verifies: Opening Balance + Total Deposits - Total Debits = Ending Balance. Edit balances or rows below if bank statement target differs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reconciliation Equation Strip */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', alignItems: 'center' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.25)', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Opening Balance</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: '700' }}>{curr}</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={exportSettings.openingBalance}
+                        onChange={(e) => setExportSettings(s => ({ ...s, openingBalance: parseFloat(e.target.value) || 0 }))}
+                        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px dashed var(--accent-cyan)', color: '#fff', fontSize: '16px', fontWeight: '800', outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: '800', color: 'var(--accent-emerald)' }}>+</div>
+
+                  <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--accent-emerald)', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Total Deposits (Credits)</span>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-emerald)', marginTop: '4px' }}>
+                      +{curr}{activeCredits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: '800', color: 'var(--accent-rose)' }}>-</div>
+
+                  <div style={{ background: 'rgba(244, 63, 94, 0.05)', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--accent-rose)', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Total Payments (Debits)</span>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-rose)', marginTop: '4px' }}>
+                      -{curr}{activeDebits.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: '800', color: '#fff' }}>=</div>
+
+                  <div style={{ background: 'rgba(56, 189, 248, 0.08)', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Calculated Balance</span>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#fff', marginTop: '4px' }}>
+                      {curr}{calcEndingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+
+                  <div style={{ background: isReconciled ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '12px 14px', borderRadius: '10px', border: isReconciled ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.4)' }}>
+                    <span style={{ fontSize: '11px', color: isReconciled ? '#10b981' : '#f87171', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Statement Target</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: '700' }}>{curr}</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={exportSettings.statementEndingBalance !== null && exportSettings.statementEndingBalance !== undefined ? exportSettings.statementEndingBalance : ''}
+                        onChange={(e) => setExportSettings(s => ({ ...s, statementEndingBalance: parseFloat(e.target.value) || 0 }))}
+                        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px dashed var(--border-subtle)', color: isReconciled ? '#fff' : '#fca5a5', fontSize: '16px', fontWeight: '800', outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* QuickBooks Web Connect (<ACCTID>, <INTU.BID>, Encoding) Settings Bar */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.65)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '14px',
+                padding: '16px 20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sliders size={16} color="var(--accent-cyan)" />
+                    <span style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>
+                      QuickBooks Web Connect &amp; OFX Settings
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                      (Pre-tuned to eliminate QuickBooks Error OL-222)
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+                  {/* Currency */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Currency (&lt;CURDEF&gt;)
+                    </label>
+                    <select 
+                      value={exportSettings.currency} 
+                      onChange={e => setExportSettings(s => ({ ...s, currency: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    >
+                      <option value="USD">USD ($) - US Dollar</option>
+                      <option value="ILS">ILS (₪) - Israeli Shekel</option>
+                      <option value="EUR">EUR (€) - Euro</option>
+                      <option value="GBP">GBP (£) - British Pound</option>
+                      <option value="CAD">CAD (C$) - Canadian Dollar</option>
+                      <option value="AUD">AUD (A$) - Australian Dollar</option>
+                    </select>
+                  </div>
+
+                  {/* Account Type */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Account Type
+                    </label>
+                    <select 
+                      value={exportSettings.accountType} 
+                      onChange={e => setExportSettings(s => ({ ...s, accountType: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    >
+                      <option value="CHECKING">Checking Account (BANKMSGSRSV1)</option>
+                      <option value="SAVINGS">Savings Account (BANKMSGSRSV1)</option>
+                      <option value="CREDITCARD">Credit Card (CREDITCARDMSGSRSV1)</option>
+                    </select>
+                  </div>
+
+                  {/* Account Number */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Account Number (&lt;ACCTID&gt;)
+                    </label>
+                    <input 
+                      type="text"
+                      value={exportSettings.accountId}
+                      onChange={e => setExportSettings(s => ({ ...s, accountId: e.target.value }))}
+                      placeholder="e.g. 123456789"
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  {/* Bank/Branch ID */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Bank / Routing (&lt;BANKID&gt;)
+                    </label>
+                    <input 
+                      type="text"
+                      value={exportSettings.bankId}
+                      onChange={e => setExportSettings(s => ({ ...s, bankId: e.target.value }))}
+                      placeholder="e.g. 3000"
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none', fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  {/* Intuit Bank ID */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Intuit Bank ID (&lt;INTU.BID&gt;)
+                    </label>
+                    <select 
+                      value={exportSettings.intuBid} 
+                      onChange={e => setExportSettings(s => ({ ...s, intuBid: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    >
+                      <option value="3000">3000 - Universal Compatibility (Recommended)</option>
+                      <option value="10898">10898 - JPMorgan Chase</option>
+                      <option value="3000">3000 - Bank of America / Wells Fargo</option>
+                      <option value="24001">24001 - Citibank</option>
+                      <option value="1001">1001 - American Express</option>
+                      <option value="4000">4000 - Capital One</option>
+                    </select>
+                  </div>
+
+                  {/* Export Mode */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Encoding &amp; Payee Mode
+                    </label>
+                    <select 
+                      value={exportSettings.exportMode} 
+                      onChange={e => setExportSettings(s => ({ ...s, exportMode: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    >
+                      <option value="utf8">QuickBooks Online (UTF-8 / Hebrew Preserved)</option>
+                      <option value="ascii">QuickBooks Desktop (Legacy ASCII &amp; Transliteration)</option>
+                    </select>
+                  </div>
+
+                  {/* Date Format Override */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      Date Format (&lt;DTPOSTED&gt;)
+                    </label>
+                    <select 
+                      value={exportSettings.dateFormat} 
+                      onChange={e => setExportSettings(s => ({ ...s, dateFormat: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
+                    >
+                      <option value="auto">Auto-Detected ({exportSettings.dateFormat === 'auto' ? 'DD/MM/YYYY' : exportSettings.dateFormat})</option>
+                      <option value="DD/MM/YYYY">DD/MM/YYYY (UK, IL, EU, AU)</option>
+                      <option value="MM/DD/YYYY">MM/DD/YYYY (US Standard)</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD (ISO 8601)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               {/* Financial Metrics Strip */}
               {(() => {
-                const curr = conversionData?.summary?.currency_symbol || (
-                  ['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$'
-                );
                 const monthCount = conversionData?.summary?.months?.length || 1;
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
@@ -1178,10 +1648,6 @@ export default function App() {
 
               {/* Financial Intelligence & Spending Distribution Dashboard */}
               {expenseCategories.length > 0 && (() => {
-                const curr = conversionData?.summary?.currency_symbol || (
-                  ['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$'
-                );
-
                 // SVG Donut Calculations
                 const radius = 58;
                 const circumference = 2 * Math.PI * radius; // ~364.42
@@ -1206,7 +1672,7 @@ export default function App() {
                             <PieChart size={17} color="var(--accent-cyan)" />
                           </div>
                           <h3 style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '-0.3px', margin: 0 }}>
-                            Spending Breakdown & QuickBooks Expense Intelligence
+                            Spending Breakdown &amp; QuickBooks Expense Intelligence
                           </h3>
                         </div>
                         <p style={{ color: 'var(--text-dim)', fontSize: '13px', margin: '4px 0 0 0' }}>
@@ -1384,45 +1850,90 @@ export default function App() {
                 );
               })()}
 
-              {/* Format Switcher & Search Bar */}
+              {/* Format Switcher & Actions Toolbar */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-                  {[
-                    { id: 'qbo', label: 'QuickBooks (.QBO)', badge: 'Recommended' },
-                    { id: 'xlsx', label: 'Excel (.XLSX)' },
-                    { id: 'csv', label: 'CSV (.CSV)' },
-                  ].map(fmt => (
-                    <button
-                      key={fmt.id}
-                      onClick={() => setSelectedFormat(fmt.id)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        transition: 'all 0.2s',
-                        background: selectedFormat === fmt.id ? 'var(--accent-cyan)' : 'transparent',
-                        color: selectedFormat === fmt.id ? '#0f172a' : 'var(--text-muted)'
-                      }}
-                    >
-                      {fmt.label} {fmt.badge && <span style={{ fontSize: '10px', padding: '2px 6px', background: selectedFormat === fmt.id ? '#0f172a' : 'rgba(56, 189, 248, 0.2)', color: selectedFormat === fmt.id ? '#fff' : 'var(--accent-cyan)', borderRadius: '4px', marginLeft: '4px' }}>{fmt.badge}</span>}
-                    </button>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                    {[
+                      { id: 'qbo', label: 'QuickBooks (.QBO)', badge: 'Recommended' },
+                      { id: 'xlsx', label: 'Excel (.XLSX)' },
+                      { id: 'csv', label: 'CSV (.CSV)' },
+                    ].map(fmt => (
+                      <button
+                        key={fmt.id}
+                        onClick={() => setSelectedFormat(fmt.id)}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          transition: 'all 0.2s',
+                          background: selectedFormat === fmt.id ? 'var(--accent-cyan)' : 'transparent',
+                          color: selectedFormat === fmt.id ? '#0f172a' : 'var(--text-muted)'
+                        }}
+                      >
+                        {fmt.label} {fmt.badge && <span style={{ fontSize: '10px', padding: '2px 6px', background: selectedFormat === fmt.id ? '#0f172a' : 'rgba(56, 189, 248, 0.2)', color: selectedFormat === fmt.id ? '#fff' : 'var(--accent-cyan)', borderRadius: '4px', marginLeft: '4px' }}>{fmt.badge}</span>}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* AI Payee Cleanup Button */}
+                  <button
+                    onClick={handleAiPayeeCleanup}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: aiCleanedSuccess ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.12)',
+                      border: aiCleanedSuccess ? '1px solid #10b981' : '1px solid rgba(56, 189, 248, 0.4)',
+                      color: aiCleanedSuccess ? '#34d399' : 'var(--accent-cyan)',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    title="Clean noisy bank descriptions into clean 32-character payees and store full details in memo"
+                  >
+                    <Sparkles size={14} />
+                    {aiCleanedSuccess ? '✓ Payees Cleaned & Truncated!' : '✨ AI Payee Cleanup'}
+                  </button>
+
+                  {/* Add Row Button */}
+                  <button
+                    onClick={handleAddTransaction}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-subtle)',
+                      color: '#fff',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Plus size={14} /> Add Row
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <span style={{ fontSize: '13px', color: 'var(--text-dim)', fontWeight: '500' }}>
-                    Showing {filteredTransactions.length} of {conversionData.summary.count} transactions
+                    Showing {filteredTransactions.length} of {allCurrentTransactions.length} transactions
                     {selectedCategory !== 'all' && ` (Filtered: ${selectedCategory})`}
                   </span>
 
-                  <div style={{ position: 'relative', width: '260px' }}>
+                  <div style={{ position: 'relative', width: '240px' }}>
                     <Search size={16} color="var(--text-dim)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                     <input 
                       type="text" 
-                      placeholder="Search payees or dates..."
+                      placeholder="Search payees, memos, dates..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{ width: '100%', padding: '8px 12px 8px 36px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
@@ -1431,31 +1942,77 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Data Table */}
-              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.2)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+              {/* Interactive Editable Data Table */}
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.25)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>Date</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>Description / Payee</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>QuickBooks Category</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600' }}>Type</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', textAlign: 'right' }}>Amount</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', textAlign: 'right' }}>Balance</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', width: '110px' }}>Date</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', minWidth: '220px' }}>Payee (&lt;NAME&gt;, max 32)</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', minWidth: '180px' }}>Memo / Details (&lt;MEMO&gt;)</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', width: '160px' }}>QuickBooks Category</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '110px' }}>Debit (-)</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '110px' }}>Credit (+)</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '100px' }}>Balance</th>
+                      <th style={{ padding: '12px 14px', fontWeight: '600', width: '40px', textAlign: 'center' }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTransactions.map((t, idx) => {
-                      const desc = t.description;
+                    {filteredTransactions.map((t) => {
+                      const desc = t.description || '';
+                      const memo = t.memo || '';
+                      const isHebrew = /[\u0590-\u05FF]/.test(desc);
                       const cat = categorizeTransaction(desc, t.amount);
+                      const isOverLimit = desc.length > 32;
 
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                          <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{t.date}</td>
-                          <td dir="auto" style={{ padding: '12px 16px', fontWeight: '500', textAlign: /[\u0590-\u05FF]/.test(desc) ? 'right' : 'left' }}>
-                            {desc}
+                        <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'transparent' }}>
+                          {/* Date Input */}
+                          <td style={{ padding: '8px 10px' }}>
+                            <input 
+                              type="text"
+                              value={t.date}
+                              onChange={e => handleCellChange(t.id, 'date', e.target.value)}
+                              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 8px', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }}
+                              onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
+                              onBlur={e => e.target.style.borderColor = 'transparent'}
+                            />
                           </td>
-                          <td style={{ padding: '12px 16px' }}>
+
+                          {/* Payee / <NAME> Input with 32-char indicator */}
+                          <td style={{ padding: '8px 10px' }}>
+                            <div style={{ position: 'relative' }}>
+                              <input 
+                                type="text"
+                                dir={isHebrew ? 'rtl' : 'ltr'}
+                                value={desc}
+                                onChange={e => handleCellChange(t.id, 'description', e.target.value)}
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: isOverLimit ? '1px solid #f87171' : '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 36px 6px 8px', fontSize: '13px', outline: 'none' }}
+                                onFocus={e => e.target.style.borderColor = isOverLimit ? '#f87171' : 'var(--accent-cyan)'}
+                                onBlur={e => e.target.style.borderColor = isOverLimit ? '#f87171' : 'transparent'}
+                              />
+                              <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: isOverLimit ? '#f87171' : 'var(--text-dim)', pointerEvents: 'none', fontWeight: '600' }}>
+                                {desc.length}/32
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Memo / <MEMO> Input */}
+                          <td style={{ padding: '8px 10px' }}>
+                            <input 
+                              type="text"
+                              dir={isHebrew ? 'rtl' : 'ltr'}
+                              value={memo}
+                              onChange={e => handleCellChange(t.id, 'memo', e.target.value)}
+                              placeholder="Optional transaction memo"
+                              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--text-muted)', padding: '6px 8px', fontSize: '12px', outline: 'none' }}
+                              onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
+                              onBlur={e => e.target.style.borderColor = 'transparent'}
+                            />
+                          </td>
+
+                          {/* QuickBooks Category */}
+                          <td style={{ padding: '8px 10px' }}>
                             <span style={{
                               fontSize: '11px',
                               padding: '3px 8px',
@@ -1473,16 +2030,51 @@ export default function App() {
                               <span>{cat.name}</span>
                             </span>
                           </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '9999px', background: t.amount >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)', color: t.amount >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)', fontWeight: '600' }}>
-                              {t.amount >= 0 ? 'Credit' : 'Debit'}
-                            </span>
+
+                          {/* Debit (-) Input */}
+                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                            <input 
+                              type="number"
+                              step="0.01"
+                              placeholder="—"
+                              value={t.amount < 0 ? Math.abs(t.amount).toFixed(2) : ''}
+                              onChange={e => handleCellChange(t.id, 'debit', e.target.value)}
+                              style={{ width: '90px', textAlign: 'right', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--accent-rose)', padding: '6px 8px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace', outline: 'none' }}
+                              onFocus={e => e.target.style.borderColor = 'var(--accent-rose)'}
+                              onBlur={e => e.target.style.borderColor = 'transparent'}
+                            />
                           </td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '700', fontFamily: 'monospace', color: t.amount >= 0 ? 'var(--accent-emerald)' : 'var(--text-main)' }}>
-                            {t.amount >= 0 ? '+' : '-'}{conversionData?.summary?.currency_symbol || (['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$')}{Math.abs(t.amount).toFixed(2)}
+
+                          {/* Credit (+) Input */}
+                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                            <input 
+                              type="number"
+                              step="0.01"
+                              placeholder="—"
+                              value={t.amount > 0 ? Math.abs(t.amount).toFixed(2) : ''}
+                              onChange={e => handleCellChange(t.id, 'credit', e.target.value)}
+                              style={{ width: '90px', textAlign: 'right', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--accent-emerald)', padding: '6px 8px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace', outline: 'none' }}
+                              onFocus={e => e.target.style.borderColor = 'var(--accent-emerald)'}
+                              onBlur={e => e.target.style.borderColor = 'transparent'}
+                            />
                           </td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-dim)', fontFamily: 'monospace' }}>
-                            {t.balance !== null && t.balance !== undefined ? `${conversionData?.summary?.currency_symbol || (['Yahav', 'Hapoalim', 'Leumi', 'Discount', 'Mizrahi', 'FIBI', 'MAX', 'Isracard', 'Cal'].some(b => (conversionData?.bank_name || '').includes(b)) ? '₪' : '$')}${Number(t.balance).toFixed(2)}` : '—'}
+
+                          {/* Balance Display */}
+                          <td style={{ padding: '8px 14px', textAlign: 'right', color: 'var(--text-dim)', fontFamily: 'monospace' }}>
+                            {t.balance !== null && t.balance !== undefined ? `${curr}${Number(t.balance).toFixed(2)}` : '—'}
+                          </td>
+
+                          {/* Delete Action */}
+                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleDeleteTransaction(t.id)}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-dim)'}
+                              title="Delete Transaction"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1728,8 +2320,10 @@ export default function App() {
               <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>$19.99 <span style={{ fontSize: '14px', color: 'var(--text-dim)', fontWeight: '400' }}>/ month</span></div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: 'var(--text-muted)', marginBottom: '28px' }}>
                 <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> <strong>Unlimited</strong> Statement Conversions</li>
-                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Batch Upload Multiple Statements</li>
-                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Priority Table Parsing AI</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> <strong>Scanned PDF OCR Engine</strong> (Up to 50 pages/mo)</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Interactive Reconciliation &amp; Editable Grid</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> AI Payee Cleanup &amp; Smart Truncation</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Certified .QBO, .XLSX &amp; .CSV Exports</li>
                 <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Cancel anytime with 1-click</li>
               </ul>
               <button 
@@ -1748,8 +2342,9 @@ export default function App() {
               <div style={{ fontSize: '36px', fontWeight: '800', marginBottom: '20px' }}>$49.00 <span style={{ fontSize: '14px', color: 'var(--text-dim)', fontWeight: '400' }}>/ month</span></div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: 'var(--text-muted)', marginBottom: '28px' }}>
                 <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Unlimited Team Seats</li>
-                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Dedicated API Access</li>
-                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Scanned & Faxed PDF OCR Engine</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> <strong>Unlimited</strong> Scanned &amp; Faxed PDF OCR Engine</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Dedicated API Access &amp; Batch Processing</li>
+                <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Custom INTU.BID Bank Routing Configuration</li>
                 <li style={{ display: 'flex', gap: '8px' }}><Check size={18} color="var(--accent-cyan)" /> Dedicated Account Manager</li>
               </ul>
               <button 
@@ -1970,7 +2565,7 @@ export default function App() {
                   <span>Cancel Anytime</span>
                 </div>
                 <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: 'var(--text-dim)' }}>
-                  Questions or custom invoices? Contact us at <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Moshiktm1994@gmail.com</a>
+                  Questions or custom invoices? Contact us at <a href="mailto:support@ledger-snap.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>support@ledger-snap.com</a>
                 </div>
               </form>
             ) : (
@@ -2003,7 +2598,7 @@ export default function App() {
                   {checkoutLoading ? 'Searching...' : 'Restore My License'}
                 </button>
                 <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '11px', color: 'var(--text-dim)' }}>
-                  Need help? Contact support at <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Moshiktm1994@gmail.com</a>
+                  Need help? Contact support at <a href="mailto:support@ledger-snap.com" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>support@ledger-snap.com</a>
                 </div>
               </form>
             )}

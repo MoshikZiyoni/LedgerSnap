@@ -1,0 +1,62 @@
+name: 24/7 US Accounting Growth & Lead Monitor
+
+on:
+  schedule:
+    # Run every 2 hours (24/7 automation at $0 cost)
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_sample:
+        description: 'Run with mock sample leads for testing'
+        required: false
+        type: boolean
+        default: false
+      hours:
+        description: 'Lookback window in hours'
+        required: false
+        default: '24'
+
+permissions:
+  contents: write
+
+jobs:
+  hunt-leads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: ⚙️ Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache-dependency-path: package.json
+
+      - name: 🕵️ Run Reddit Lead Hunter
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ "${{ inputs.test_sample }}" = "true" ]; then
+            node scripts/growth/reddit-lead-hunter.mjs --test-sample
+          else
+            node scripts/growth/reddit-lead-hunter.mjs --max 5
+          fi
+
+      - name: 💾 Commit & Push Discovered Leads Log
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add scripts/growth/leads-log.json
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "chore(growth): update reddit leads log [skip ci]"
+            git push origin HEAD:${{ github.ref }}
+            echo "✅ Successfully synced updated leads log to repository."
+          else
+            echo "ℹ️ No new leads to commit."
+          fi

@@ -659,7 +659,14 @@ def download_converted(
     file_id: str, 
     format: str = Query("qbo", enum=["qbo", "xlsx", "csv"]),
     client_id: Optional[str] = Query(None),
-    license_key: Optional[str] = Query(None)
+    license_key: Optional[str] = Query(None),
+    currency: Optional[str] = Query(None),
+    account_id: Optional[str] = Query(None),
+    bank_id: Optional[str] = Query(None),
+    account_type: Optional[str] = Query(None),
+    export_mode: Optional[str] = Query("utf8"),
+    intu_bid: Optional[str] = Query("3000"),
+    date_format: Optional[str] = Query("auto")
 ):
     """Downloads parsed transactions in QBO, Excel (.xlsx), or CSV format, strictly tracked by IP and License."""
     real_ip = get_client_ip(request)
@@ -683,7 +690,11 @@ def download_converted(
                     "count": len(SAMPLE_TRANSACTIONS),
                     "total_credits": 7450.00,
                     "total_debits": 2423.30,
-                    "net_change": 5026.70
+                    "net_change": 5026.70,
+                    "currency": "USD",
+                    "account_id": "987654321",
+                    "bank_id": "021000021",
+                    "account_type": "CHECKING"
                 }
             }
         else:
@@ -694,7 +705,6 @@ def download_converted(
         allowed, used = get_free_usage_status(cid, real_ip)
         file_cid = record.get("client_id")
         file_ip = record.get("ip")
-        # If the file belongs to this client/IP, allow the download of their 1 free statement
         if file_cid and file_ip and (file_cid != cid and file_ip != real_ip):
             raise HTTPException(
                 status_code=402, 
@@ -703,7 +713,17 @@ def download_converted(
 
     transactions = record["transactions"]
     bank_name = record.get("bank_name", "Bank Statement")
+    summary = record.get("summary", {})
     raw_base = os.path.splitext(record.get("filename", "statement"))[0]
+
+    # Resolve settings (user query overrides detected summary)
+    eff_currency = (currency or summary.get("currency") or "USD").upper().strip()
+    eff_acct_id = account_id or summary.get("account_id") or "123456789"
+    eff_bank_id = bank_id or summary.get("bank_id") or "123456789"
+    eff_acct_type = (account_type or summary.get("account_type") or "CHECKING").upper().strip()
+    eff_export_mode = (export_mode or "utf8").lower().strip()
+    eff_intu_bid = intu_bid or "3000"
+    eff_date_format = date_format or summary.get("detected_date_format") or "auto"
     
     # RFC 5987 safe header encoding for non-ASCII / Hebrew filenames
     import urllib.parse
@@ -712,7 +732,19 @@ def download_converted(
     disp_header = f'attachment; filename="{safe_ascii}.{format}"; filename*=UTF-8\'\'{encoded_name}'
 
     if format == "qbo":
-        qbo_content = generate_qbo(transactions, bank_name=bank_name)
+        qbo_content = generate_qbo(
+            transactions,
+            bank_name=bank_name,
+            account_id=eff_acct_id,
+            bank_id=eff_bank_id,
+            currency=eff_currency,
+            account_type=eff_acct_type,
+            export_mode=eff_export_mode,
+            intu_bid=eff_intu_bid,
+            date_format=eff_date_format,
+            ending_balance=summary.get("ending_balance"),
+            opening_balance=summary.get("opening_balance")
+        )
         return Response(
             content=qbo_content.encode('utf-8', errors='replace'), 
             media_type="application/x-ofx", 
@@ -736,6 +768,85 @@ def download_converted(
             media_type="text/csv", 
             headers={"Content-Disposition": disp_header}
         )
+
+@app.post("/api/export")
+def export_customized(request: Request, payload: Dict[str, Any]):
+    """
+    Exports user-edited transactions from the interactive review grid to QBO, XLSX, or CSV.
+    """
+    real_ip = get_client_ip(request)
+    cid = payload.get("client_id") or real_ip or "anonymous-client"
+    license_key = payload.get("license_key")
+    file_id = payload.get("file_id", "")
+    fmt = payload.get("format", "qbo").lower()
+
+    is_authorized = False
+    if license_key:
+        lic = verify_license(license_key)
+        if lic and lic.get("credits_remaining", 0) > 0:
+            deduct_credit_if_needed(license_key)
+            is_authorized = True
+
+    if not is_authorized and file_id != "demo-sample-chase-statement":
+        allowed, used = get_free_usage_status(cid, real_ip)
+        if not allowed or used > 1:
+            raise HTTPException(
+                status_code=402,
+                detail="Free trial limit reached. Upgrade to Pro for unlimited exports."
+            )
+
+    transactions = payload.get("transactions", [])
+    bank_name = payload.get("bank_name", "Bank Statement")
+    currency = payload.get("currency", "USD")
+    account_id = payload.get("account_id", "123456789")
+    bank_id = payload.get("bank_id", "123456789")
+    account_type = payload.get("account_type", "CHECKING")
+    export_mode = payload.get("export_mode", "utf8")
+    intu_bid = payload.get("intu_bid", "3000")
+    date_format = payload.get("date_format", "auto")
+    filename = payload.get("filename", "statement")
+    raw_base = os.path.splitext(filename)[0]
+
+    import urllib.parse
+    safe_ascii = "bank_statement"
+    encoded_name = urllib.parse.quote(f"{raw_base}.{fmt}")
+    disp_header = f'attachment; filename="{safe_ascii}.{fmt}"; filename*=UTF-8\'\'{encoded_name}'
+
+    if fmt == "qbo":
+        qbo_content = generate_qbo(
+            transactions,
+            bank_name=bank_name,
+            account_id=account_id,
+            bank_id=bank_id,
+            currency=currency,
+            account_type=account_type,
+            export_mode=export_mode,
+            intu_bid=intu_bid,
+            date_format=date_format
+        )
+        return Response(
+            content=qbo_content.encode('utf-8', errors='replace'),
+            media_type="application/x-ofx",
+            headers={"Content-Disposition": disp_header}
+        )
+    elif fmt == "xlsx":
+        xlsx_bytes = generate_excel(transactions, bank_name=bank_name)
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": disp_header}
+        )
+    elif fmt == "csv":
+        df = pd.DataFrame(transactions)
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        return Response(
+            content=csv_buffer.getvalue().encode('utf-8-sig', errors='replace'),
+            media_type="text/csv",
+            headers={"Content-Disposition": disp_header}
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported export format.")
 
 if __name__ == "__main__":
     import uvicorn

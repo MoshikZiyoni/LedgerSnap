@@ -86,7 +86,7 @@ export default function LegalPage({ pageType, onNavigate }) {
 
             <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: '700', marginTop: '32px' }}>6. Contact Us</h2>
             <p>
-              If you have any questions regarding these Terms, contact our legal team at <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan, #38bdf8)' }}>Moshiktm1994@gmail.com</a>.
+              If you have any questions regarding these Terms, contact our legal team at <a href="mailto:support@ledger-snap.com" style={{ color: 'var(--accent-cyan, #38bdf8)' }}>support@ledger-snap.com</a>.
             </p>
           </div>
         )}
@@ -121,7 +121,7 @@ export default function LegalPage({ pageType, onNavigate }) {
 
             <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: '700', marginTop: '32px' }}>4. GDPR &amp; CCPA Compliance</h2>
             <p>
-              You have the right to request the deletion or retrieval of your account email and licensing metadata at any time by contacting <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan, #38bdf8)' }}>Moshiktm1994@gmail.com</a>.
+              You have the right to request the deletion or retrieval of your account email and licensing metadata at any time by contacting <a href="mailto:support@ledger-snap.com" style={{ color: 'var(--accent-cyan, #38bdf8)' }}>support@ledger-snap.com</a>.
             </p>
           </div>
         )}
@@ -145,7 +145,7 @@ export default function LegalPage({ pageType, onNavigate }) {
 
             <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: '700', marginTop: '32px' }}>3. How to Request a Refund</h2>
             <p>
-              To request a refund, simply send an email to <a href="mailto:Moshiktm1994@gmail.com" style={{ color: 'var(--accent-cyan, #38bdf8)' }}>Moshiktm1994@gmail.com</a> with:
+              To request a refund, simply send an email to <a href="mailto:support@ledger-snap.com" style={{ color: 'var(--accent-cyan, #38bdf8)' }}>support@ledger-snap.com</a> with:
             </p>
             <ol>
               <li>The email address used during purchase.</li>

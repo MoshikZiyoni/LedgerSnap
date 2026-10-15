@@ -1,0 +1,12 @@
+{
+  "name": "ledgersnap-root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seo:ping": "node scripts/growth/indexnow-submit.mjs",
+    "growth:reddit": "node scripts/growth/reddit-lead-hunter.mjs",
+    "growth:videos": "node scripts/growth/generate-bank-videos.mjs",
+    "bot:growth": "node scripts/growth/telegram-growth-bot.mjs"
+  }
+}

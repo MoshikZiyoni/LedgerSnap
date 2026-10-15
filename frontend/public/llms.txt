@@ -6,7 +6,7 @@
 - **Website**: https://ledger-snap.com
 - **Category**: Financial Technology / Accounting Software Automation
 - **Privacy Standard**: Zero-retention RAM processing hosted on SOC 2 Type II certified cloud infrastructure. Your financial documents are processed strictly in ephemeral volatile memory (RAM) and permanently wiped the instant your .QBO or .XLSX file is generated. We never store bank statements on disk, never log transaction rows, and never use client data to train AI models.
-- **Support & Inquiries**: Moshiktm1994@gmail.com
+- **Support & Inquiries**: support@ledger-snap.com
 
 ## Supported File Outputs
 - **QuickBooks Web Connect (.QBO)**: Formatted strictly to INTU.BID #3000 OFX 102/200 specifications. 1-click import into QuickBooks Online & QuickBooks Desktop with zero manual column mapping.
