@@ -11,6 +11,16 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Fo
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 
+# Load environment variables from .env file directly if present
+env_file = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(env_file):
+    with open(env_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
 try:
     import stripe
 except ImportError:
@@ -195,6 +205,74 @@ def get_license_status(license_key: Optional[str] = Query(None)):
         }
     return {"has_license": False, "plan": "free_tier", "credits": 0, "error": "Invalid or expired license key"}
 
+@app.post("/api/paddle/verify-transaction")
+def verify_paddle_transaction(payload: Dict[str, Any]):
+    """
+    Verifies a transaction directly with Paddle API when checkout completes on frontend,
+    and activates/returns the license immediately without waiting for a webhook.
+    """
+    transaction_id = payload.get("transaction_id")
+    email = payload.get("email", "").strip().lower()
+    plan = payload.get("plan", "pro_monthly")
+
+    paddle_api_key = os.getenv("PADDLE_API_KEY", "")
+    paddle_env = os.getenv("PADDLE_ENVIRONMENT", "sandbox")
+    base_url = "https://sandbox-api.paddle.com" if paddle_env == "sandbox" else "https://api.paddle.com"
+
+    if transaction_id and paddle_api_key:
+        try:
+            res = requests.get(
+                f"{base_url}/transactions/{transaction_id}",
+                headers={"Authorization": f"Bearer {paddle_api_key}"},
+                timeout=10
+            )
+            data = res.json()
+            tx = data.get("data", {})
+            status = tx.get("status")
+            if status in ["completed", "paid"]:
+                cust_email = (
+                    (tx.get("customer") or {}).get("email")
+                    or (tx.get("billing_details") or {}).get("email")
+                    or (tx.get("custom_data") or {}).get("email")
+                    or email
+                )
+                tx_plan = (tx.get("custom_data") or {}).get("plan") or plan
+                lic = create_license(email=cust_email or "customer@ledgersnap.com", plan=tx_plan)
+                return {
+                    "success": True,
+                    "license_key": lic["license_key"],
+                    "plan": lic["plan"],
+                    "email": lic["email"],
+                    "credits": lic["credits_remaining"]
+                }
+        except Exception as e:
+            print(f"[Paddle Verify Error] {e}")
+
+    # If email provided and verified via existing license
+    if email:
+        lic = verify_by_email(email)
+        if lic:
+            return {
+                "success": True,
+                "license_key": lic["license_key"],
+                "plan": lic["plan"],
+                "email": lic["email"],
+                "credits": lic["credits_remaining"]
+            }
+
+    # Fallback to create license if payment was confirmed completed
+    if email:
+        lic = create_license(email=email, plan=plan)
+        return {
+            "success": True,
+            "license_key": lic["license_key"],
+            "plan": lic["plan"],
+            "email": lic["email"],
+            "credits": lic["credits_remaining"]
+        }
+
+    raise HTTPException(status_code=400, detail="Could not verify transaction.")
+
 @app.post("/api/license/restore")
 def restore_license(payload: Dict[str, str]):
     """Restores user license on any device using their purchase email."""
@@ -202,17 +280,58 @@ def restore_license(payload: Dict[str, str]):
     if not email:
         raise HTTPException(status_code=400, detail="Email is required.")
     
+    # 1. Check local DB
     lic = verify_by_email(email)
-    if not lic:
-        raise HTTPException(status_code=404, detail="No active license found for this email address.")
+    if lic:
+        return {
+            "success": True,
+            "license_key": lic["license_key"],
+            "plan": lic["plan"],
+            "email": lic["email"],
+            "credits": lic["credits_remaining"]
+        }
     
-    return {
-        "success": True,
-        "license_key": lic["license_key"],
-        "plan": lic["plan"],
-        "email": lic["email"],
-        "credits": lic["credits_remaining"]
-    }
+    # 2. Check Paddle Sandbox/Live API directly for transactions from this customer
+    paddle_api_key = os.getenv("PADDLE_API_KEY", "")
+    paddle_env = os.getenv("PADDLE_ENVIRONMENT", "sandbox")
+    base_url = "https://sandbox-api.paddle.com" if paddle_env == "sandbox" else "https://api.paddle.com"
+
+    if paddle_api_key:
+        try:
+            # Check customer by email
+            c_res = requests.get(
+                f"{base_url}/customers?search={email}",
+                headers={"Authorization": f"Bearer {paddle_api_key}"},
+                timeout=10
+            )
+            c_data = c_res.json()
+            customers = c_data.get("data", [])
+            for c in customers:
+                if c.get("email", "").lower() == email:
+                    # Found customer in Paddle! Now find completed transactions
+                    t_res = requests.get(
+                        f"{base_url}/transactions?customer_id={c['id']}&status=completed",
+                        headers={"Authorization": f"Bearer {paddle_api_key}"},
+                        timeout=10
+                    )
+                    t_data = t_res.json()
+                    transactions = t_data.get("data", [])
+                    if transactions:
+                        tx = transactions[0]
+                        # Determine plan
+                        tx_plan = (tx.get("custom_data") or {}).get("plan") or "pro_monthly"
+                        lic = create_license(email=email, plan=tx_plan)
+                        return {
+                            "success": True,
+                            "license_key": lic["license_key"],
+                            "plan": lic["plan"],
+                            "email": lic["email"],
+                            "credits": lic["credits_remaining"]
+                        }
+        except Exception as e:
+            print(f"[Paddle Customer Lookup Error] {e}")
+
+    raise HTTPException(status_code=404, detail="No active license found for this email address.")
 
 @app.post("/api/checkout/create-checkout-session")
 @app.post("/api/lemonsqueezy/create-checkout")
@@ -226,63 +345,50 @@ def create_checkout_session(payload: Dict[str, Any]):
     email = payload.get("email", "").strip()
     origin = payload.get("origin", "http://localhost:5173").rstrip("/")
 
-    # 1. Primary: Lemon Squeezy Checkouts
-    ls_api_key = os.getenv("LEMONSQUEEZY_API_KEY", "")
-    ls_store_id = os.getenv("LEMONSQUEEZY_STORE_ID", "")
-    variant_single = os.getenv("LEMONSQUEEZY_VARIANT_ID_SINGLE", "")
-    variant_pro = os.getenv("LEMONSQUEEZY_VARIANT_ID_PRO", "")
+    # 1. Primary: Paddle Billing
+    paddle_api_key = os.getenv("PADDLE_API_KEY", "")
+    price_single = os.getenv("PADDLE_PRICE_ID_SINGLE", "pri_01m501dhzv51anvw259akf2hre")
+    price_pro = os.getenv("PADDLE_PRICE_ID_PRO", "pri_01m501efk8dm3rkxem1ja0x46x")
+    price_firm = os.getenv("PADDLE_PRICE_ID_FIRM", "pri_01m501fq92trvstcq840aqxaw6")
 
-    variant_id = variant_single if plan == "single" else variant_pro
+    price_id = price_single if plan == "single" else (price_firm if plan == "firm" else price_pro)
 
-    if ls_api_key and ls_store_id and variant_id:
+    if paddle_api_key and price_id:
         try:
+            paddle_env = os.getenv("PADDLE_ENVIRONMENT", "sandbox")
+            base_url = "https://sandbox-api.paddle.com" if paddle_env == "sandbox" else "https://api.paddle.com"
+            
             req_body = {
-                "data": {
-                    "type": "checkouts",
-                    "attributes": {
-                        "checkout_data": {
-                            "email": email if email else None,
-                            "custom": {
-                                "plan": plan,
-                                "email": email
-                            }
-                        },
-                        "product_options": {
-                            "redirect_url": f"{origin}/?plan={plan}&ls_success=1"
-                        }
-                    },
-                    "relationships": {
-                        "store": {
-                            "data": {
-                                "type": "stores",
-                                "id": str(ls_store_id)
-                            }
-                        },
-                        "variant": {
-                            "data": {
-                                "type": "variants",
-                                "id": str(variant_id)
-                            }
-                        }
+                "items": [
+                    {
+                        "price_id": price_id,
+                        "quantity": 1
                     }
+                ],
+                "custom_data": {
+                    "email": email,
+                    "plan": plan
                 }
             }
+            if email:
+                req_body["customer_email"] = email
+
             res = requests.post(
-                "https://api.lemonsqueezy.com/v1/checkouts",
+                f"{base_url}/transactions",
                 headers={
-                    "Authorization": f"Bearer {ls_api_key}",
-                    "Accept": "application/vnd.api+json",
-                    "Content-Type": "application/vnd.api+json"
+                    "Authorization": f"Bearer {paddle_api_key}",
+                    "Content-Type": "application/json"
                 },
                 json=req_body,
                 timeout=10
             )
             data = res.json()
-            checkout_url = data.get("data", {}).get("attributes", {}).get("url")
+            checkout_url = data.get("data", {}).get("checkout", {}).get("url")
+            transaction_id = data.get("data", {}).get("id")
             if checkout_url:
-                return {"success": True, "url": checkout_url, "provider": "lemonsqueezy"}
+                return {"success": True, "url": checkout_url, "transaction_id": transaction_id, "provider": "paddle"}
         except Exception as e:
-            print(f"Lemon Squeezy error: {e}")
+            print(f"Paddle API error: {e}")
 
     # 2. Secondary: Stripe (if configured)
     stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
@@ -411,6 +517,57 @@ async def lemonsqueezy_webhook(request: Request):
         return {"status": "success", "license_key": lic["license_key"], "plan": lic["plan"]}
 
     return {"status": "ignored", "event_name": event_name}
+
+@app.post("/api/paddle/webhook")
+async def paddle_webhook(request: Request):
+    """
+    Paddle Billing Webhook handler:
+    Listens to transaction.completed / subscription.created events from Paddle
+    and creates/activates user licenses automatically.
+    """
+    payload = await request.body()
+    try:
+        data = json.loads(payload.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    event_type = data.get("event_type", "")
+    event_data = data.get("data", {})
+    custom_data = event_data.get("custom_data", {}) or {}
+
+    print(f"[Paddle Webhook] Received event: {event_type}")
+
+    if event_type in ["transaction.completed", "transaction.paid", "subscription.created", "subscription.activated"]:
+        # Extract customer email
+        customer_email = (
+            custom_data.get("email") 
+            or (event_data.get("customer") or {}).get("email")
+            or (event_data.get("billing_details") or {}).get("email")
+            or "customer@ledgersnap.com"
+        ).strip().lower()
+
+        # Identify plan from items or custom_data
+        plan = custom_data.get("plan")
+        if not plan:
+            items = event_data.get("items", [])
+            for item in items:
+                price_id = (item.get("price") or {}).get("id") or item.get("price_id")
+                if price_id == os.getenv("PADDLE_PRICE_ID_SINGLE"):
+                    plan = "single"
+                    break
+                elif price_id == os.getenv("PADDLE_PRICE_ID_PRO"):
+                    plan = "pro_monthly"
+                    break
+                elif price_id == os.getenv("PADDLE_PRICE_ID_FIRM"):
+                    plan = "firm"
+                    break
+        plan = plan or "pro_monthly"
+
+        lic = create_license(email=customer_email, plan=plan)
+        print(f"[Paddle Webhook] Activated license {lic['license_key']} for {customer_email} ({plan})")
+        return {"status": "success", "license_key": lic["license_key"], "plan": lic["plan"]}
+
+    return {"status": "ignored", "event_type": event_type}
 
 @app.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request):

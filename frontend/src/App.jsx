@@ -7,6 +7,7 @@ import {
   Eye, Cookie, Cpu
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { initializePaddle } from '@paddle/paddle-js';
 import LiveDemoSection from './components/LiveDemoSection';
 import BankLandingPage from './components/BankLandingPage';
 import ComparisonPage from './components/ComparisonPage';
@@ -146,6 +147,56 @@ export default function App() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
+  const [paddle, setPaddle] = useState(null);
+
+  // Initialize Paddle.js
+  useEffect(() => {
+    const clientToken = import.meta.env.VITE_PADDLE_CLIENT_TOKEN || 'test_f441b5bb650cb60a6bf2308e1b9';
+    const paddleEnv = import.meta.env.VITE_PADDLE_ENVIRONMENT || 'sandbox';
+    initializePaddle({
+      environment: paddleEnv,
+      token: clientToken,
+      eventCallback: (data) => {
+        if (data.name === 'checkout.completed') {
+          triggerConfetti();
+          setCheckoutMessage('🎉 Payment completed! Activating your license...');
+          
+          const txId = data.data?.id || data.data?.transaction_id;
+          const userEmail = data.data?.customer?.email || checkoutEmail;
+          
+          fetch(`${API_BASE}/api/paddle/verify-transaction`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              transaction_id: txId,
+              email: userEmail,
+              plan: checkoutPlan
+            })
+          })
+            .then(r => r.json())
+            .then(res => {
+              if (res.success && res.license_key) {
+                setLicense(res);
+                localStorage.setItem('bqbo_license', JSON.stringify(res));
+                setCheckoutMessage('🎉 Pro access unlocked successfully!');
+                setTimeout(() => {
+                  setIsCheckoutOpen(false);
+                  setCheckoutMessage(null);
+                }, 1500);
+              }
+            })
+            .catch(err => {
+              console.error('Paddle transaction verification error:', err);
+              setTimeout(() => setIsCheckoutOpen(false), 2000);
+            });
+        }
+      }
+    }).then(p => {
+      if (p) setPaddle(p);
+    }).catch(err => {
+      console.warn('Paddle initialization notice:', err);
+    });
+  }, []);
 
   // Client-Side Routing State for Programmatic SEO
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
@@ -388,26 +439,40 @@ export default function App() {
     }
   };
 
-  const loadSample = async () => {
+  const loadSample = async (bankOverride = null) => {
     setError(null);
     setIsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/sample`);
-      if (res.ok) {
-        const data = await res.json();
-        setConversionData(data);
-        setSelectedCategory('all');
-      } else {
-        setConversionData(SAMPLE_DEMO_DATA);
-        setSelectedCategory('all');
-      }
-    } catch {
-      setConversionData(SAMPLE_DEMO_DATA);
-      setSelectedCategory('all');
-    } finally {
-      setIsLoading(false);
-      triggerConfetti();
+    setParsingStep(1);
+
+    // Realistic step-by-step progress animation over 2.1 seconds
+    await new Promise(r => setTimeout(r, 650));
+    setParsingStep(2);
+    await new Promise(r => setTimeout(r, 750));
+    setParsingStep(3);
+    await new Promise(r => setTimeout(r, 700));
+
+    let sampleData = { ...SAMPLE_DEMO_DATA };
+    if (bankOverride && bankOverride.name) {
+      sampleData = {
+        ...SAMPLE_DEMO_DATA,
+        filename: `${bankOverride.name.replace(/\s+/g, '_')}_Business_Statement_Oct_2026.pdf`,
+        bank_name: bankOverride.fullName || bankOverride.name,
+        summary: {
+          ...SAMPLE_DEMO_DATA.summary,
+          bank_detected: bankOverride.fullName || bankOverride.name
+        }
+      };
     }
+
+    setConversionData(sampleData);
+    setSelectedCategory('all');
+    setIsLoading(false);
+    setParsingStep(1);
+    triggerConfetti();
+
+    setTimeout(() => {
+      window.scrollTo({ top: 180, behavior: 'smooth' });
+    }, 100);
   };
 
   const triggerConfetti = () => {
@@ -486,6 +551,30 @@ export default function App() {
     }
 
     try {
+      // 1. If Paddle.js is initialized, open Paddle checkout directly
+      if (paddle && paddle.Checkout) {
+        const priceMap = {
+          single: import.meta.env.VITE_PADDLE_PRICE_SINGLE || 'pri_01m501dhzv51anvw259akf2hre',
+          pro_monthly: import.meta.env.VITE_PADDLE_PRICE_PRO || 'pri_01m501efk8dm3rkxem1ja0x46x',
+          firm: import.meta.env.VITE_PADDLE_PRICE_FIRM || 'pri_01m501fq92trvstcq840aqxaw6'
+        };
+        const selectedPriceId = priceMap[checkoutPlan] || priceMap.pro_monthly;
+
+        paddle.Checkout.open({
+          settings: {
+            displayMode: 'overlay',
+            theme: 'dark',
+            locale: 'en'
+          },
+          items: [{ priceId: selectedPriceId, quantity: 1 }],
+          customer: { email: checkoutEmail },
+          customData: { plan: checkoutPlan, email: checkoutEmail }
+        });
+        setCheckoutLoading(false);
+        return;
+      }
+
+      // 2. Otherwise fallback to backend API checkout session
       const res = await fetch(`${API_BASE}/api/checkout/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -507,7 +596,6 @@ export default function App() {
             setCheckoutMessage(null);
           }, 1500);
         } else {
-          // Hosted Lemon Squeezy / Stripe Checkout redirect
           window.location.href = data.url;
         }
       } else {
@@ -688,7 +776,7 @@ export default function App() {
               isLoading={isLoading}
               parsingStep={parsingStep}
               error={error}
-              onLoadSample={loadSample}
+              onLoadSample={() => loadSample(bank)}
               onNavigate={handleNavigate}
             />
           );
@@ -808,17 +896,52 @@ export default function App() {
                       Supports all major US & international banks. 256-bit ephemeral RAM processing. No passwords required.
                     </p>
 
-                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                      <button type="button" className="gradient-btn">
-                        <UploadCloud size={16} /> Select Statement PDF
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={(e) => { e.stopPropagation(); loadSample(); }}
-                        style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '12px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
-                      >
-                        <Sparkles size={16} color="#38bdf8" /> Try with Chase Demo Statement
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginTop: '12px' }}>
+                      <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button type="button" className="gradient-btn" style={{ padding: '14px 26px', fontSize: '15px', fontWeight: '700' }}>
+                          <UploadCloud size={18} /> Select Statement PDF
+                        </button>
+                        <button 
+                          type="button" 
+                          id="hero-live-demo-trigger"
+                          onClick={(e) => { e.stopPropagation(); loadSample(); }}
+                          style={{ 
+                            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(99, 102, 241, 0.25) 100%)',
+                            color: '#fff', 
+                            border: '1.5px solid rgba(56, 189, 248, 0.6)', 
+                            padding: '14px 26px', 
+                            borderRadius: '12px', 
+                            fontWeight: '800', 
+                            fontSize: '15px',
+                            cursor: 'pointer', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '10px', 
+                            boxShadow: '0 0 25px rgba(56, 189, 248, 0.35)',
+                            transition: 'all 0.25s ease' 
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                            e.currentTarget.style.boxShadow = '0 0 35px rgba(56, 189, 248, 0.6)';
+                            e.currentTarget.style.borderColor = '#38bdf8';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 0 25px rgba(56, 189, 248, 0.35)';
+                            e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.6)';
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#38bdf8', color: '#090d16', fontSize: '12px', fontWeight: '900' }}>▶</span>
+                          <span>⚡ Run Live 2-Second Chase PDF Demo</span>
+                        </button>
+                      </div>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        <span style={{ color: '#10b981', fontWeight: '700' }}>✓ 1-Click Interactive Test</span>
+                        <span>•</span>
+                        <span>No file upload required</span>
+                        <span>•</span>
+                        <span>Inspect math checksums &amp; .QBO live</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1759,7 +1882,34 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Option 2: Single Pass */}
+                  {/* Option 2: CPA & Accounting Firm */}
+                  <div 
+                    onClick={() => setCheckoutPlan('firm')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      border: checkoutPlan === 'firm' ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      background: checkoutPlan === 'firm' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.02)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: '700', fontSize: '15px' }}>CPA & Accounting Firm</span>
+                        <span style={{ fontSize: '10px', background: 'rgba(56, 189, 248, 0.2)', color: 'var(--accent-cyan)', fontWeight: '800', padding: '2px 8px', borderRadius: '9999px', textTransform: 'uppercase' }}>High Volume</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }}>Unlimited team seats • Dedicated API • Scanned & Faxed OCR</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '18px', fontWeight: '800' }}>$49.00</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>/mo</span>
+                    </div>
+                  </div>
+
+                  {/* Option 3: Single Pass */}
                   <div 
                     onClick={() => setCheckoutPlan('single')}
                     style={{
@@ -1804,13 +1954,13 @@ export default function App() {
                   className="gradient-btn" 
                   style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: '700' }}
                 >
-                  {checkoutLoading ? 'Redirecting to Stripe...' : `Pay with Stripe (${checkoutPlan === 'single' ? '$4.99' : '$19.99/mo'})`}
+                  {checkoutLoading ? 'Opening Checkout...' : `Proceed to Checkout (${checkoutPlan === 'single' ? '$4.99' : (checkoutPlan === 'firm' ? '$49.00/mo' : '$19.99/mo')})`}
                 </button>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '16px', fontSize: '12px', color: 'var(--text-dim)' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Lock size={12} /> Powered by Stripe</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Lock size={12} /> Powered by Paddle</span>
                   <span>•</span>
-                  <span>256-bit Encryption</span>
+                  <span>Card / Apple Pay / PayPal</span>
                   <span>•</span>
                   <span>Cancel Anytime</span>
                 </div>

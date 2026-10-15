@@ -2,7 +2,17 @@ import React, { useState } from 'react';
 import { Play, Sparkles, CheckCircle2, ShieldCheck, Database, FileSpreadsheet } from 'lucide-react';
 
 export default function LiveDemoSection({ onTryChaseDemo }) {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = React.useRef(null);
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      const nextMuted = !videoRef.current.muted;
+      videoRef.current.muted = nextMuted;
+      setIsMuted(nextMuted);
+    }
+  };
 
   return (
     <section style={{ marginBottom: '80px' }}>
@@ -59,10 +69,14 @@ export default function LiveDemoSection({ onTryChaseDemo }) {
           }}
         >
           <video
+            ref={videoRef}
             src="/demo/ledgersnap-qbo-demo.mp4"
-            controls
+            autoPlay
+            muted
+            loop
             playsInline
-            preload="metadata"
+            controls
+            preload="auto"
             poster="/demo/poster.png"
             style={{
               position: 'absolute',
@@ -78,66 +92,57 @@ export default function LiveDemoSection({ onTryChaseDemo }) {
             Your browser does not support the video tag.
           </video>
 
-          {/* Interactive Play Button overlay when not playing */}
-          {!isPlaying && (
-            <div 
-              onClick={(e) => {
-                const videoEl = e.currentTarget.parentElement.querySelector('video');
-                if (videoEl) {
-                  videoEl.play().catch(() => {});
-                  setIsPlaying(true);
-                }
-              }}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'linear-gradient(to top, rgba(15, 23, 42, 0.6) 0%, transparent 60%)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                pointerEvents: 'none'
-              }}
-            >
-              <div 
-                style={{
-                  pointerEvents: 'auto',
-                  width: '76px',
-                  height: '76px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  boxShadow: '0 10px 30px rgba(56, 189, 248, 0.5)',
-                  transform: 'scale(1)',
-                  transition: 'transform 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <Play size={32} fill="#fff" style={{ marginLeft: '4px' }} />
-              </div>
-              <span 
-                style={{ 
-                  marginTop: '16px', 
-                  color: '#fff', 
-                  fontSize: '14px', 
-                  fontWeight: '700', 
-                  letterSpacing: '0.3px',
-                  background: 'rgba(15, 23, 42, 0.75)',
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)'
-                }}
-              >
-                Watch 45-Second QuickBooks Import
-              </span>
-            </div>
-          )}
+          {/* Sound Mute/Unmute Quick Toggle */}
+          <button
+            type="button"
+            onClick={toggleMute}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              zIndex: 10,
+              background: 'rgba(15, 23, 42, 0.85)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              borderRadius: '20px',
+              color: '#fff',
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              backdropFilter: 'blur(8px)',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+            }}
+          >
+            {isMuted ? <span style={{ color: '#38bdf8' }}>🔇 Muted (Click for Sound)</span> : <span style={{ color: '#10b981' }}>🔊 Sound On</span>}
+          </button>
+
+          {/* Live indicator badge */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '50px',
+              left: '16px',
+              zIndex: 10,
+              background: 'rgba(15, 23, 42, 0.85)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '16px',
+              color: '#94a3b8',
+              padding: '4px 12px',
+              fontSize: '11px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              pointerEvents: 'none'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+            Live QBO Import Demo • Auto-Looping
+          </div>
         </div>
 
         {/* Action Button Right Below Player */}

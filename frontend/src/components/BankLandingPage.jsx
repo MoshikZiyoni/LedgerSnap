@@ -169,17 +169,52 @@ export default function BankLandingPage({
                 Supports checking, savings, and credit card statements. Instant in-memory conversion with zero disk logging.
               </p>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button type="button" className="gradient-btn">
-                  <UploadCloud size={16} /> Select {bank.name} PDF
-                </button>
-                <button 
-                  type="button" 
-                  onClick={(e) => { e.stopPropagation(); onLoadSample(); }}
-                  style={{ background: 'rgba(255, 255, 255, 0.08)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.15)', padding: '12px 20px', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' }}
-                >
-                  <Sparkles size={16} color="#38bdf8" /> Try with Demo Statement
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button type="button" className="gradient-btn" style={{ padding: '14px 26px', fontSize: '15px', fontWeight: '700' }}>
+                    <UploadCloud size={18} /> Select {bank.name} PDF
+                  </button>
+                  <button 
+                    type="button" 
+                    id="bank-live-demo-trigger"
+                    onClick={(e) => { e.stopPropagation(); onLoadSample(); }}
+                    style={{ 
+                      background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(99, 102, 241, 0.25) 100%)',
+                      color: '#fff', 
+                      border: '1.5px solid rgba(56, 189, 248, 0.6)', 
+                      padding: '14px 26px', 
+                      borderRadius: '12px', 
+                      fontWeight: '800', 
+                      fontSize: '15px',
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '10px', 
+                      boxShadow: '0 0 25px rgba(56, 189, 248, 0.35)',
+                      transition: 'all 0.25s ease' 
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 0 35px rgba(56, 189, 248, 0.6)';
+                      e.currentTarget.style.borderColor = '#38bdf8';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = '0 0 25px rgba(56, 189, 248, 0.35)';
+                      e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.6)';
+                    }}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', borderRadius: '50%', background: '#38bdf8', color: '#090d16', fontSize: '12px', fontWeight: '900' }}>▶</span>
+                    <span>⚡ Run Live 2-Second {bank.name} PDF Demo</span>
+                  </button>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  <span style={{ color: '#10b981', fontWeight: '700' }}>✓ 1-Click Interactive Test</span>
+                  <span>•</span>
+                  <span>No file upload required</span>
+                  <span>•</span>
+                  <span>Sample {bank.name} mathematical checksum</span>
+                </div>
               </div>
             </div>
           )}
@@ -191,6 +226,104 @@ export default function BankLandingPage({
           </div>
         )}
       </div>
+
+      {/* Bank Video Player with autoPlay, muted, loop, playsInline (NavBoost & Dwell-Time) */}
+      <section style={{ marginBottom: '64px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div 
+            className="glass-pill" 
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '6px 16px', 
+              marginBottom: '12px', 
+              color: 'var(--accent-cyan)', 
+              fontSize: '12px', 
+              fontWeight: '700',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase'
+            }}
+          >
+            <Sparkles size={14} color="#38bdf8" />
+            Verified Technical Proof & Demonstration
+          </div>
+          <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 32px)', fontWeight: '800', marginBottom: '10px' }}>
+            Watch {bank.name} PDF Statements Import Directly into QuickBooks Online
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '680px', margin: '0 auto', lineHeight: 1.6 }}>
+            See how our deterministic parsing engine converts {bank.name} statements into certified Intuit .QBO Web Connect format in real time.
+          </p>
+        </div>
+
+        <div 
+          className="glass-panel" 
+          style={{ 
+            maxWidth: '920px', 
+            margin: '0 auto', 
+            padding: '16px', 
+            borderRadius: '20px', 
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            background: 'rgba(15, 23, 42, 0.8)',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7)'
+          }}
+        >
+          <div 
+            style={{ 
+              position: 'relative', 
+              width: '100%', 
+              paddingTop: '56.25%', 
+              borderRadius: '12px', 
+              overflow: 'hidden',
+              background: '#090d16'
+            }}
+          >
+            <video
+              src="/demo/ledgersnap-qbo-demo.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              preload="auto"
+              poster="/demo/poster.png"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            >
+              Your browser does not support the video tag.
+            </video>
+
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '50px',
+                left: '16px',
+                zIndex: 10,
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '16px',
+                color: '#94a3b8',
+                padding: '4px 12px',
+                fontSize: '11px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                pointerEvents: 'none'
+              }}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+              Live {bank.name} Import Demonstration • Auto-Looping
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Bank Specific Feature Highlights */}
       <section style={{ marginBottom: '64px' }}>
