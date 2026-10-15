@@ -12,6 +12,7 @@ import LiveDemoSection from './components/LiveDemoSection';
 import BankLandingPage from './components/BankLandingPage';
 import ComparisonPage from './components/ComparisonPage';
 import GuidePage from './components/GuidePage';
+import LegalPage from './components/LegalPage';
 import Footer from './components/Footer';
 import { SEO_BANKS } from './data/seoBanks';
 import { SEO_COMPARISONS } from './data/seoComparisons';
@@ -814,8 +815,15 @@ export default function App() {
         return null;
       })()}
 
+      {!conversionData && (currentPath === '/terms' || currentPath === '/privacy' || currentPath === '/refund') && (
+        <LegalPage 
+          pageType={currentPath.replace('/', '')} 
+          onNavigate={handleNavigate} 
+        />
+      )}
+
       {/* Homepage & Studio Content (Rendered on '/' or when a conversion is active) */}
-      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/'))) && (
+      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/') && currentPath !== '/terms' && currentPath !== '/privacy' && currentPath !== '/refund')) && (
       <main style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '48px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           {/* Trust & Architecture Badges (Task 2) */}
@@ -963,15 +971,12 @@ export default function App() {
                     { name: 'Wells Fargo', slug: 'wells-fargo-pdf-to-qbo' },
                     { name: 'Citibank', slug: 'citibank-pdf-to-qbo' },
                     { name: 'Capital One', slug: 'capital-one-pdf-to-qbo' },
-                    { name: 'American Express', slug: 'american-express-pdf-to-qbo' },
-                    { name: 'Mercury', slug: 'mercury-bank-pdf-to-qbo' },
-                    { name: 'TD Bank', slug: 'td-bank-pdf-to-qbo' },
+                    { name: 'Mercury Bank', slug: 'mercury-bank-pdf-to-qbo' },
                     { name: 'PNC Bank', slug: 'pnc-bank-pdf-to-qbo' },
                     { name: 'U.S. Bank', slug: 'us-bank-pdf-to-qbo' },
-                    { name: 'Bank Hapoalim', slug: 'bank-hapoalim-pdf-to-qbo' },
-                    { name: 'Bank Leumi', slug: 'bank-leumi-pdf-to-qbo' },
-                    { name: 'Discount Bank', slug: 'discount-bank-pdf-to-qbo' },
-                    { name: 'Mizrahi-Tefahot', slug: 'mizrahi-tefahot-pdf-to-qbo' }
+                    { name: 'TD Bank', slug: 'td-bank-pdf-to-qbo' },
+                    { name: 'Truist Bank', slug: 'truist-bank-pdf-to-qbo' },
+                    { name: 'Silicon Valley Bank', slug: 'silicon-valley-bank-pdf-to-qbo' }
                   ].map((bankItem, i) => (
                     <a 
                       key={i} 
@@ -1780,7 +1785,7 @@ export default function App() {
               },
               {
                 q: "Which banks are supported?",
-                a: "LedgerSnap supports all major US, UK, European, and international banks including JPMorgan Chase, Bank of America, Wells Fargo, Citibank, Capital One, Barclays, PNC, TD Bank, Silicon Valley Bank, Mercury, and Israeli banks (Bank Hapoalim, Bank Leumi, Israel Discount Bank, Bank Yahav, Mizrahi Tefahot)."
+                a: "LedgerSnap supports all major US national and regional banks including JPMorgan Chase, Bank of America, Wells Fargo, Citibank, Capital One, Mercury Bank, PNC Bank, U.S. Bank, TD Bank, Truist Bank, Silicon Valley Bank (SVB), and 500+ credit unions across the United States."
               },
               {
                 q: "Why not just use a regular free PDF to Excel converter?",

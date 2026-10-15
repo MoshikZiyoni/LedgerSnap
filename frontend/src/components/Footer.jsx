@@ -5,8 +5,8 @@ import { SEO_COMPARISONS } from '../data/seoComparisons';
 import { SEO_GUIDES } from '../data/seoGuides';
 
 export default function Footer({ onNavigate }) {
-  const usBanks = SEO_BANKS.filter(b => !b.isIsraeli).slice(0, 7);
-  const israeliBanks = SEO_BANKS.filter(b => b.isIsraeli);
+  const usBanksCol1 = SEO_BANKS.slice(0, 6);
+  const usBanksCol2 = SEO_BANKS.slice(6, 12);
 
   const handleLinkClick = (e, path) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ export default function Footer({ onNavigate }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Lock size={18} color="var(--accent-indigo)" />
             <span style={{ color: 'var(--text-main)', fontWeight: '600', fontSize: '13px' }}>
-              256-Bit TLS & Client-Side Encryption
+              256-Bit TLS &amp; Client-Side Encryption
             </span>
           </div>
         </div>
@@ -57,12 +57,12 @@ export default function Footer({ onNavigate }) {
               </span>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px' }}>
-              Instant deterministic conversion of PDF bank statements into certified Intuit QuickBooks (.QBO) Web Connect and formatted Excel (.XLSX) files.
+              Instant deterministic conversion of US bank &amp; credit card statement PDFs into certified Intuit QuickBooks (.QBO) and formatted Excel (.XLSX) spreadsheets.
             </p>
 
             <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <span style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent-cyan)', fontWeight: '700', marginBottom: '6px' }}>
-                Contact & Support
+                Contact &amp; Billing Support
               </span>
               <a 
                 href="mailto:Moshiktm1994@gmail.com" 
@@ -74,18 +74,18 @@ export default function Footer({ onNavigate }) {
                 Moshiktm1994@gmail.com
               </a>
               <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginTop: '6px' }}>
-                Questions, custom bank layouts, or enterprise firm plans.
+                Questions, statement parsing inquiries, or enterprise firm access.
               </span>
             </div>
           </div>
 
-          {/* Column 1: Popular US Bank Converters */}
+          {/* Column 1: Top US Banks */}
           <div>
             <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '16px', letterSpacing: '0.2px' }}>
-              Popular US Bank Converters
+              Major US Banks
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {usBanks.map((b) => (
+              {usBanksCol1.map((b) => (
                 <li key={b.slug}>
                   <a
                     href={`/convert/${b.slug}`}
@@ -101,13 +101,13 @@ export default function Footer({ onNavigate }) {
             </ul>
           </div>
 
-          {/* Column 2: Israeli Bank Converters */}
+          {/* Column 2: Regional & Tech Banks */}
           <div>
             <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '16px', letterSpacing: '0.2px' }}>
-              Israeli Bank Converters (IL → US QuickBooks)
+              Regional &amp; Tech Business Banks
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {israeliBanks.map((b) => (
+              {usBanksCol2.map((b) => (
                 <li key={b.slug}>
                   <a
                     href={`/convert/${b.slug}`}
@@ -116,52 +116,72 @@ export default function Footer({ onNavigate }) {
                     onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                     onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                   >
-                    <span>{b.name}</span>
+                    <span>{b.name} PDF to .QBO</span>
                   </a>
                 </li>
               ))}
               <li style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                  ✓ Hebrew RTL character reconstruction &amp; ILS/USD dual currency.
+                  ✓ Bypasses 90-day Intuit bank feed limits with validated .QBO files.
                 </span>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Comparisons & Guides */}
+          {/* Column 3: Legal & Comparisons */}
           <div>
             <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '16px', letterSpacing: '0.2px' }}>
-              Comparisons & Guides
+              Trust &amp; Legal Policies
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <li>
+                <a
+                  href="/terms"
+                  onClick={(e) => handleLinkClick(e, '/terms')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  Terms of Service
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/privacy"
+                  onClick={(e) => handleLinkClick(e, '/privacy')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/refund"
+                  onClick={(e) => handleLinkClick(e, '/refund')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  Refund &amp; Cancellation Policy (14-Day Guarantee)
+                </a>
+              </li>
+              <li style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent-cyan)', fontWeight: '700' }}>
+                  Alternative Comparisons
+                </span>
+              </li>
               {SEO_COMPARISONS.map((c) => (
                 <li key={c.slug}>
                   <a
                     href={`/compare/${c.slug}`}
                     onClick={(e) => handleLinkClick(e, `/compare/${c.slug}`)}
-                    style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                  >
-                    LedgerSnap vs {c.competitor}
-                  </a>
-                </li>
-              ))}
-              <li style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent-cyan)', fontWeight: '700' }}>
-                  QuickBooks Tutorials
-                </span>
-              </li>
-              {SEO_GUIDES.map((g) => (
-                <li key={g.slug}>
-                  <a
-                    href={`/guides/${g.slug}`}
-                    onClick={(e) => handleLinkClick(e, `/guides/${g.slug}`)}
                     style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '12px' }}
                     onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                     onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                   >
-                    {g.slug === 'how-to-fix-quickbooks-web-connect-error-ol-222' ? 'Fix QuickBooks Error OL-222' : g.slug === 'how-to-import-pdf-bank-statements-into-quickbooks-online' ? 'Import PDF to QuickBooks Online' : 'Israeli Statements for US Subsidiaries'}
+                    LedgerSnap vs {c.competitor}
                   </a>
                 </li>
               ))}
@@ -173,29 +193,16 @@ export default function Footer({ onNavigate }) {
         <div style={{ paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <p style={{ margin: 0, fontSize: '12px' }}>
-              © 2026 LedgerSnap (ledger-snap.com). All rights reserved. Intuit and QuickBooks are registered trademarks of Intuit Inc.
+              © 2026 LedgerSnap (ledger-snap.com). All rights reserved. Intuit and QuickBooks are registered trademarks of Intuit Inc. Payments processed securely by Paddle.com.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '20px', fontSize: '12px' }}>
-            <a 
-              href="/" 
-              onClick={(e) => handleLinkClick(e, '/')} 
-              style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
-            >
-              Home
-            </a>
-            <a href="#how-it-works" onClick={(e) => { if (window.location.pathname !== '/') { handleLinkClick(e, '/#how-it-works'); } }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
-              How it works
-            </a>
-            <a href="#pricing" onClick={(e) => { if (window.location.pathname !== '/') { handleLinkClick(e, '/#pricing'); } }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
-              Pricing
-            </a>
-            <a href="#faq" onClick={(e) => { if (window.location.pathname !== '/') { handleLinkClick(e, '/#faq'); } }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
-              FAQ
-            </a>
-            <span style={{ color: 'var(--text-dim)' }}>
-              Zero-Retention RAM | Hosted on SOC 2 Type II Cloud Infrastructure
-            </span>
+          <div style={{ display: 'flex', gap: '18px', fontSize: '12px', flexWrap: 'wrap' }}>
+            <a href="/" onClick={(e) => handleLinkClick(e, '/')} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Home</a>
+            <a href="#how-it-works" onClick={(e) => { if (window.location.pathname !== '/') { handleLinkClick(e, '/#how-it-works'); } }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>How it works</a>
+            <a href="#pricing" onClick={(e) => { if (window.location.pathname !== '/') { handleLinkClick(e, '/#pricing'); } }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Pricing</a>
+            <a href="/terms" onClick={(e) => handleLinkClick(e, '/terms')} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Terms</a>
+            <a href="/privacy" onClick={(e) => handleLinkClick(e, '/privacy')} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy</a>
+            <a href="/refund" onClick={(e) => handleLinkClick(e, '/refund')} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Refunds</a>
           </div>
         </div>
       </div>
