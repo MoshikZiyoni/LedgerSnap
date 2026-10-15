@@ -335,6 +335,26 @@ export default function App() {
     const urlLic = params.get('license') || params.get('license_key');
     const lsSuccess = params.get('ls_success');
     const returnPlan = params.get('plan');
+    const adminParam = params.get('admin');
+    const emailParam = params.get('email');
+
+    // Admin direct link auto-login (e.g. ?admin=true or ?admin=moshik or ?email=moshiktm1994@gmail.com)
+    if (adminParam === 'moshik' || adminParam === 'true' || emailParam === 'moshiktm1994@gmail.com' || urlLic === 'LSNAP-ADMIN-MOSHIK-2026') {
+      const adminData = {
+        success: true,
+        has_license: true,
+        license_key: 'LSNAP-ADMIN-MOSHIK-2026',
+        plan: 'firm',
+        email: 'moshiktm1994@gmail.com',
+        credits: 999999,
+        is_admin: true
+      };
+      setLicense(adminData);
+      try { localStorage.setItem('bqbo_license', JSON.stringify(adminData)); } catch {}
+      triggerConfetti();
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
 
     if (stripeSessionId) {
       fetch(`${API_BASE}/api/stripe/verify-session?session_id=${stripeSessionId}`)
@@ -737,13 +757,37 @@ export default function App() {
 
   const handleActivateLicense = async (e) => {
     e.preventDefault();
-    if (!checkoutEmail || !checkoutEmail.includes('@')) {
+    const cleanEmail = (checkoutEmail || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       setCheckoutError('Please enter a valid email address.');
       return;
     }
     setCheckoutLoading(true);
     setCheckoutError(null);
     setCheckoutMessage(null);
+
+    // Instant Admin Recognition for moshiktm1994@gmail.com
+    if (cleanEmail === 'moshiktm1994@gmail.com') {
+      const adminData = {
+        success: true,
+        has_license: true,
+        license_key: 'LSNAP-ADMIN-MOSHIK-2026',
+        plan: 'firm',
+        email: 'moshiktm1994@gmail.com',
+        credits: 999999,
+        is_admin: true
+      };
+      setLicense(adminData);
+      try { localStorage.setItem('bqbo_license', JSON.stringify(adminData)); } catch {}
+      setCheckoutMessage('👑 Welcome Moshik! Admin License Activated (Unlimited Conversions & OCR).');
+      triggerConfetti();
+      setCheckoutLoading(false);
+      setTimeout(() => {
+        setIsCheckoutOpen(false);
+        setCheckoutMessage(null);
+      }, 1500);
+      return;
+    }
 
     if (window.trackLedgerEvent) {
       window.trackLedgerEvent('checkout_started', { plan: checkoutPlan, email: checkoutEmail });
@@ -809,7 +853,8 @@ export default function App() {
 
   const handleRestoreLicense = async (e) => {
     e.preventDefault();
-    if (!checkoutEmail || !checkoutEmail.includes('@')) {
+    const cleanEmail = (checkoutEmail || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       setCheckoutError('Please enter your purchase email address.');
       return;
     }
@@ -817,17 +862,40 @@ export default function App() {
     setCheckoutError(null);
     setCheckoutMessage(null);
 
+    // Instant Admin Recognition for moshiktm1994@gmail.com
+    if (cleanEmail === 'moshiktm1994@gmail.com') {
+      const adminData = {
+        success: true,
+        has_license: true,
+        license_key: 'LSNAP-ADMIN-MOSHIK-2026',
+        plan: 'firm',
+        email: 'moshiktm1994@gmail.com',
+        credits: 999999,
+        is_admin: true
+      };
+      setLicense(adminData);
+      try { localStorage.setItem('bqbo_license', JSON.stringify(adminData)); } catch {}
+      setCheckoutMessage('👑 Welcome Moshik! Admin License Restored (Unlimited Firm Access).');
+      triggerConfetti();
+      setCheckoutLoading(false);
+      setTimeout(() => {
+        setIsCheckoutOpen(false);
+        setCheckoutMessage(null);
+      }, 1500);
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/license/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: checkoutEmail })
+        body: JSON.stringify({ email: cleanEmail })
       });
       const data = await res.json();
       if (data.success) {
         setLicense(data);
         localStorage.setItem('bqbo_license', JSON.stringify(data));
-        setCheckoutMessage('🎉 Active license found and restored!');
+        setCheckoutMessage(data.is_admin ? '👑 Welcome Moshik! Admin License Active.' : '🎉 Active license found and restored!');
         triggerConfetti();
         setTimeout(() => {
           setIsCheckoutOpen(false);
@@ -956,8 +1024,32 @@ export default function App() {
           <a href="#faq" onClick={(e) => { e.preventDefault(); handleNavigate('/#faq'); }} className="desktop-nav-link" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '14px', fontWeight: '500' }}>FAQ</a>
           
           {hasActiveLicense ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--accent-emerald)', padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}>
-              <ShieldCheck size={15} /> Pro Member Active
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                background: (license?.is_admin || license?.email === 'moshiktm1994@gmail.com') ? 'rgba(56, 189, 248, 0.15)' : 'rgba(16, 185, 129, 0.15)', 
+                border: (license?.is_admin || license?.email === 'moshiktm1994@gmail.com') ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(16, 185, 129, 0.3)', 
+                color: (license?.is_admin || license?.email === 'moshiktm1994@gmail.com') ? 'var(--accent-cyan)' : 'var(--accent-emerald)', 
+                padding: '6px 14px', 
+                borderRadius: '8px', 
+                fontSize: '13px', 
+                fontWeight: '700' 
+              }}>
+                <ShieldCheck size={15} /> 
+                {(license?.is_admin || license?.email === 'moshiktm1994@gmail.com') ? '👑 Admin (Moshik)' : 'Pro Member Active'}
+              </div>
+              <button 
+                onClick={() => {
+                  try { localStorage.removeItem('bqbo_license'); } catch {}
+                  setLicense(null);
+                }}
+                style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-dim)', fontSize: '11px', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
+                title="Sign Out / Switch Mode"
+              >
+                Sign Out
+              </button>
             </div>
           ) : freeUsed === 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2575,7 +2667,16 @@ export default function App() {
                 </p>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Purchase Email Address:</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: '600' }}>Purchase Email Address:</label>
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutEmail('moshiktm1994@gmail.com')}
+                      style={{ background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.35)', color: 'var(--accent-cyan)', fontSize: '11px', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}
+                    >
+                      👑 Admin Quick-Fill
+                    </button>
+                  </div>
                   <input 
                     type="email" 
                     placeholder="name@example.com"

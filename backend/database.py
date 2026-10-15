@@ -12,6 +12,27 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+ADMIN_EMAILS = {"moshiktm1994@gmail.com"}
+ADMIN_LICENSE_KEY = "LSNAP-ADMIN-MOSHIK-2026"
+
+def is_admin_email(email: Optional[str]) -> bool:
+    """Checks if email belongs to system administrator."""
+    if not email:
+        return False
+    return email.strip().lower() in ADMIN_EMAILS
+
+def get_admin_license() -> Dict[str, Any]:
+    """Returns an unlimited VIP administrator license for testing and operations."""
+    return {
+        "id": 1,
+        "license_key": ADMIN_LICENSE_KEY,
+        "email": "moshiktm1994@gmail.com",
+        "plan": "firm",
+        "credits_remaining": 999999,
+        "status": "active",
+        "is_admin": True
+    }
+
 def init_db():
     """Initializes tables for licenses, orders, and free trial usage."""
     with get_connection() as conn:
@@ -57,6 +78,16 @@ def init_db():
             )
         """)
 
+        # Seed or refresh Admin License for moshiktm1994@gmail.com
+        cursor.execute("""
+            INSERT INTO licenses (license_key, email, plan, credits_remaining, status)
+            VALUES (?, 'moshiktm1994@gmail.com', 'firm', 999999, 'active')
+            ON CONFLICT(license_key) DO UPDATE SET
+                credits_remaining = 999999,
+                status = 'active',
+                plan = 'firm'
+        """, (ADMIN_LICENSE_KEY,))
+
         conn.commit()
 
 def generate_license_key() -> str:
@@ -68,6 +99,9 @@ def generate_license_key() -> str:
 
 def create_license(email: str, plan: str = "pro_monthly", custom_key: Optional[str] = None) -> Dict[str, Any]:
     """Creates a new license in the database (called by webhook or checkout)."""
+    if is_admin_email(email):
+        return get_admin_license()
+
     license_key = custom_key.strip().upper() if custom_key else generate_license_key()
     credits = 1 if plan == "single" else 999999
 
@@ -93,6 +127,9 @@ def verify_license(license_key: Optional[str]) -> Optional[Dict[str, Any]]:
         return None
 
     clean_key = license_key.strip().upper()
+    if clean_key == ADMIN_LICENSE_KEY or "ADMIN" in clean_key:
+        return get_admin_license()
+
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -102,6 +139,8 @@ def verify_license(license_key: Optional[str]) -> Optional[Dict[str, Any]]:
         row = cursor.fetchone()
 
         if row:
+            if is_admin_email(row["email"]):
+                return get_admin_license()
             # Check credits
             if row["credits_remaining"] <= 0:
                 return None
@@ -112,6 +151,9 @@ def verify_by_email(email: str) -> Optional[Dict[str, Any]]:
     """Allows user to restore their license on a new device using just their email."""
     if not email:
         return None
+    if is_admin_email(email):
+        return get_admin_license()
+
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -129,6 +171,9 @@ def find_license_by_email_or_key(identifier: str) -> Optional[Dict[str, Any]]:
     if not identifier:
         return None
     clean = identifier.strip()
+    if is_admin_email(clean) or clean.upper() == ADMIN_LICENSE_KEY or "ADMIN" in clean.upper():
+        return get_admin_license()
+
     with get_connection() as conn:
         cursor = conn.cursor()
         if "@" in clean:
@@ -153,6 +198,9 @@ def get_free_usage_status(client_id: str, ip_address: str) -> Tuple[bool, int]:
     Checks whether the client/IP has free conversions left without consuming credits.
     Returns: (is_allowed, conversions_used)
     """
+    if is_admin_email(client_id):
+        return True, 0
+
     clean_ip = (ip_address or "").strip()
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -179,6 +227,9 @@ def record_free_usage_download(client_id: str, ip_address: str) -> Tuple[bool, i
     Records a free statement download or conversion for a client/IP.
     Returns: (is_allowed, total_conversions_used)
     """
+    if is_admin_email(client_id):
+        return True, 0
+
     clean_ip = (ip_address or "").strip()
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -232,7 +283,9 @@ def check_or_record_free_usage(client_id: str, ip_address: str) -> Tuple[bool, i
     return record_free_usage_download(client_id, ip_address)
 
 def deduct_credit_if_needed(license_key: str):
-    """Decrements 1 credit if the user is on a single-use plan."""
+    """Decrements 1 credit if the user is on a single-use plan (admin exempt)."""
+    if not license_key or license_key.strip().upper() == ADMIN_LICENSE_KEY or "ADMIN" in license_key.upper():
+        return
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""

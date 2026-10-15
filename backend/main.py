@@ -35,7 +35,7 @@ try:
         find_license_by_email_or_key,
         get_free_usage_status, record_free_usage_download,
         check_or_record_free_usage, deduct_credit_if_needed,
-        reset_free_usage
+        reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS
     )
 except ImportError:
     from converters.pdf_parser import extract_transactions_from_pdf
@@ -46,7 +46,7 @@ except ImportError:
         find_license_by_email_or_key,
         get_free_usage_status, record_free_usage_download,
         check_or_record_free_usage, deduct_credit_if_needed,
-        reset_free_usage
+        reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS
     )
 
 app = FastAPI(
@@ -194,6 +194,17 @@ def get_license_status(license_key: Optional[str] = Query(None)):
     if not license_key:
         return {"has_license": False, "plan": "free_tier", "credits": 1}
     
+    clean_key = license_key.strip().upper()
+    if clean_key == ADMIN_LICENSE_KEY or "ADMIN" in clean_key:
+        return {
+            "has_license": True,
+            "license_key": ADMIN_LICENSE_KEY,
+            "plan": "firm",
+            "credits": 999999,
+            "email": "moshiktm1994@gmail.com",
+            "is_admin": True
+        }
+
     lic = verify_license(license_key)
     if lic:
         return {
@@ -201,7 +212,8 @@ def get_license_status(license_key: Optional[str] = Query(None)):
             "license_key": lic["license_key"],
             "plan": lic["plan"],
             "credits": lic["credits_remaining"],
-            "email": lic["email"]
+            "email": lic["email"],
+            "is_admin": lic.get("is_admin", False)
         }
     return {"has_license": False, "plan": "free_tier", "credits": 0, "error": "Invalid or expired license key"}
 
@@ -266,7 +278,8 @@ def restore_license(payload: Dict[str, str]):
             "license_key": lic["license_key"],
             "plan": lic["plan"],
             "email": lic["email"],
-            "credits": lic["credits_remaining"]
+            "credits": lic["credits_remaining"],
+            "is_admin": lic.get("is_admin", False)
         }
     
     # 2. Check Paddle Sandbox/Live API directly for transactions from this customer
@@ -594,9 +607,11 @@ async def convert_pdf(
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
 
-    # Check if user has an active paid license
+    # Check if user has an active paid license or admin status
     has_valid_license = False
-    if license_key:
+    if is_admin_email(cid) or is_admin_email(client_id) or (license_key and ("ADMIN" in license_key.upper() or license_key == ADMIN_LICENSE_KEY)):
+        has_valid_license = True
+    elif license_key:
         lic = verify_license(license_key)
         if lic and lic.get("credits_remaining", 0) > 0:
             has_valid_license = True
@@ -673,7 +688,9 @@ def download_converted(
     cid = client_id or real_ip or "anonymous-client"
     
     is_authorized = False
-    if license_key:
+    if is_admin_email(cid) or (license_key and ("ADMIN" in license_key.upper() or license_key == ADMIN_LICENSE_KEY)):
+        is_authorized = True
+    elif license_key:
         lic = verify_license(license_key)
         if lic and lic.get("credits_remaining", 0) > 0:
             deduct_credit_if_needed(license_key)
@@ -781,7 +798,9 @@ def export_customized(request: Request, payload: Dict[str, Any]):
     fmt = payload.get("format", "qbo").lower()
 
     is_authorized = False
-    if license_key:
+    if is_admin_email(cid) or (license_key and ("ADMIN" in license_key.upper() or license_key == ADMIN_LICENSE_KEY)):
+        is_authorized = True
+    elif license_key:
         lic = verify_license(license_key)
         if lic and lic.get("credits_remaining", 0) > 0:
             deduct_credit_if_needed(license_key)
