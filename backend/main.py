@@ -248,30 +248,8 @@ def verify_paddle_transaction(payload: Dict[str, Any]):
         except Exception as e:
             print(f"[Paddle Verify Error] {e}")
 
-    # If email provided and verified via existing license
-    if email:
-        lic = verify_by_email(email)
-        if lic:
-            return {
-                "success": True,
-                "license_key": lic["license_key"],
-                "plan": lic["plan"],
-                "email": lic["email"],
-                "credits": lic["credits_remaining"]
-            }
-
-    # Fallback to create license if payment was confirmed completed
-    if email:
-        lic = create_license(email=email, plan=plan)
-        return {
-            "success": True,
-            "license_key": lic["license_key"],
-            "plan": lic["plan"],
-            "email": lic["email"],
-            "credits": lic["credits_remaining"]
-        }
-
-    raise HTTPException(status_code=400, detail="Could not verify transaction.")
+    # Strict security: DO NOT create license without verified Paddle transaction status
+    raise HTTPException(status_code=400, detail="Transaction not verified or payment incomplete.")
 
 @app.post("/api/license/restore")
 def restore_license(payload: Dict[str, str]):
