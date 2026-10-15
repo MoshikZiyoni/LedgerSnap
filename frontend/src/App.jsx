@@ -335,11 +335,8 @@ export default function App() {
     const urlLic = params.get('license') || params.get('license_key');
     const lsSuccess = params.get('ls_success');
     const returnPlan = params.get('plan');
-    const adminParam = params.get('admin');
-    const emailParam = params.get('email');
-
-    // Admin direct link auto-login (e.g. ?admin=true or ?admin=moshik or ?email=moshiktm1994@gmail.com)
-    if (adminParam === 'moshik' || adminParam === 'true' || emailParam === 'moshiktm1994@gmail.com' || urlLic === 'LSNAP-ADMIN-MOSHIK-2026') {
+    // Secret license key direct link (optional)
+    if (urlLic === 'LSNAP-ADMIN-MOSHIK-2026') {
       const adminData = {
         success: true,
         has_license: true,
@@ -2667,16 +2664,7 @@ export default function App() {
                 </p>
 
                 <div style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '600' }}>Purchase Email Address:</label>
-                    <button
-                      type="button"
-                      onClick={() => setCheckoutEmail('moshiktm1994@gmail.com')}
-                      style={{ background: 'rgba(56, 189, 248, 0.12)', border: '1px solid rgba(56, 189, 248, 0.35)', color: 'var(--accent-cyan)', fontSize: '11px', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', fontWeight: '700' }}
-                    >
-                      👑 Admin Quick-Fill
-                    </button>
-                  </div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Purchase Email Address:</label>
                   <input 
                     type="email" 
                     placeholder="name@example.com"

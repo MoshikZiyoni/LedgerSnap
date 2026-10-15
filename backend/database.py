@@ -5,7 +5,8 @@ import secrets
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "banktoqbo.db")
+DB_PATH = os.getenv("SQLITE_DB_PATH") or os.getenv("DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "banktoqbo.db")
+os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
