@@ -35,7 +35,8 @@ try:
         find_license_by_email_or_key,
         get_free_usage_status, record_free_usage_download,
         check_or_record_free_usage, deduct_credit_if_needed,
-        reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS
+        reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS,
+        save_conversion_record, get_conversion_record, get_db_info
     )
 except ImportError:
     from converters.pdf_parser import extract_transactions_from_pdf
@@ -46,7 +47,8 @@ except ImportError:
         find_license_by_email_or_key,
         get_free_usage_status, record_free_usage_download,
         check_or_record_free_usage, deduct_credit_if_needed,
-        reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS
+        reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS,
+        save_conversion_record, get_conversion_record, get_db_info
     )
 
 app = FastAPI(
@@ -126,6 +128,7 @@ def health_check():
         "status": "healthy",
         "app": "LedgerSnap",
         "version": "1.0.0",
+        "database": get_db_info(),
         "supported_formats": ["QBO (QuickBooks)", "XLSX (Excel)", "CSV"]
     }
 
@@ -167,7 +170,7 @@ def robots():
 def get_sample():
     """Generates a demo session with pre-populated Chase statement data."""
     sample_id = "demo-sample-chase-statement"
-    CONVERSIONS_DB[sample_id] = {
+    sample_record = {
         "filename": "Chase_Business_Checking_October_2026.pdf",
         "bank_name": "JPMorgan Chase Bank, N.A.",
         "transactions": SAMPLE_TRANSACTIONS,
@@ -177,8 +180,12 @@ def get_sample():
             "total_debits": 2423.30,
             "net_change": 5026.70,
             "bank_detected": "JPMorgan Chase Bank, N.A."
-        }
+        },
+        "client_id": "demo-sample",
+        "ip": "127.0.0.1"
     }
+    CONVERSIONS_DB[sample_id] = sample_record
+    save_conversion_record(sample_id, sample_record)
     return {
         "file_id": sample_id,
         "filename": "Chase_Business_Checking_October_2026.pdf",
@@ -642,7 +649,7 @@ async def convert_pdf(
             summary["note"] = "Extracted using intelligent layout reconstruction"
 
         file_id = str(uuid.uuid4())
-        CONVERSIONS_DB[file_id] = {
+        conv_record = {
             "filename": file.filename,
             "bank_name": bank_detected,
             "transactions": transactions,
@@ -650,6 +657,8 @@ async def convert_pdf(
             "client_id": cid,
             "ip": real_ip
         }
+        CONVERSIONS_DB[file_id] = conv_record
+        save_conversion_record(file_id, conv_record)
 
         # Consume the 1 free trial conversion for this IP/client
         if not has_valid_license:
@@ -697,6 +706,10 @@ def download_converted(
             is_authorized = True
 
     record = CONVERSIONS_DB.get(file_id)
+    if not record:
+        record = get_conversion_record(file_id)
+        if record:
+            CONVERSIONS_DB[file_id] = record
     if not record:
         if file_id == "demo-sample-chase-statement":
             record = {
