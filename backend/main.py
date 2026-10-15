@@ -438,15 +438,8 @@ def create_checkout_session(payload: Dict[str, Any]):
         except Exception as e:
             print(f"Stripe error: {e}")
 
-    # 3. Demo / Local Test Mode fallback
-    lic = create_license(email=email or "demo-user@ledgersnap.com", plan=plan)
-    return {
-        "success": True,
-        "demo_mode": True,
-        "message": "Demo mode active (payment keys not configured yet). License activated immediately!",
-        "license": lic,
-        "url": f"{origin}/?license={lic['license_key']}&plan={plan}"
-    }
+    # If Paddle checkout URL wasn't generated
+    raise HTTPException(status_code=502, detail="Paddle payment checkout is currently pending verification or unavailable. Please try again shortly.")
 
 @app.get("/api/stripe/verify-session")
 def verify_stripe_session(session_id: str = Query(...)):
