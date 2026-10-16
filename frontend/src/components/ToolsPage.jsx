@@ -285,7 +285,7 @@ export default function ToolsPage({ tool, onNavigate }) {
       <div className="glass-panel" style={{ padding: '32px', borderRadius: '16px', border: '1px solid var(--border-subtle)', marginBottom: '40px' }}>
         
         {/* TOOL 1: QBO VIEWER & OL-222 CHECKER */}
-        {tool.slug === 'qbo-viewer-checker' && (
+        {(tool.slug === 'qbo-viewer-and-validator' || tool.slug === 'qbo-viewer-checker') && (
           <div>
             {!parsedData ? (
               <div 
@@ -589,7 +589,7 @@ export default function ToolsPage({ tool, onNavigate }) {
         )}
 
         {/* TOOL 3: OFX / QFX TO QBO CONVERTER */}
-        {tool.slug === 'ofx-qfx-to-qbo' && (
+        {(tool.slug === 'ofx-to-qbo' || tool.slug === 'qfx-to-qbo' || tool.slug === 'ofx-qfx-to-qbo') && (
           <div>
             {!ofxConverted ? (
               <div 

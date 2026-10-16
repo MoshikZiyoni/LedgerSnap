@@ -1,374 +1,589 @@
-export const SEO_BANKS = [
+/**
+ * Authoritative Directory of Top 30 US Banks, Credit Cards & Neobanks
+ * for Programmatic SEO Landing Pages, Schema.org Generation, and Dropzone Configuration.
+ */
+
+export const US_INSTITUTIONS = [
   {
-    slug: 'chase-pdf-to-qbo',
+    id: 'chase',
     name: 'JPMorgan Chase',
     fullName: 'JPMorgan Chase Bank, N.A.',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Multi-page checking/credit card PDFs & old statements beyond 90-day Bank Feed limit',
-    metaTitle: 'Convert Chase PDF Statements to QuickBooks (.QBO) & Excel | LedgerSnap',
-    metaDescription: 'Convert multi-page JPMorgan Chase bank and credit card PDF statements into certified QuickBooks (.QBO) and Excel. Bypass the 90-day bank feed limit. Try 1 statement free.',
-    heroH1: 'Convert JPMorgan Chase PDF Statements to QuickBooks (.QBO) & Excel in Seconds',
-    heroSub: 'Import historical Chase checking, savings, and Sapphire/Ink credit card statements beyond the 90-day Intuit bank feed limit. Converts multi-page statements into validated .QBO Web Connect files with zero column mapping errors.',
+    org: 'JPMorgan Chase Bank',
+    fid: '10898',
+    bid: '10898',
+    routing: '021000021',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Chase Direct Connect only imports the last 90 days of transactions into QuickBooks Online. For older catch-up bookkeeping, upload your Chase PDF statements here.',
+    painPoint: 'Multi-page checking & Sapphire/Ink credit card statements beyond the 90-day bank feed limit',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'CHECK # / CHK 1042',
+    keywords: ['CHASE', 'JPMORGAN', 'JPMORGAN CHASE', 'J.P. MORGAN', 'CHASE INK', 'SAPPHIRE']
+  },
+  {
+    id: 'wells-fargo',
+    name: 'Wells Fargo',
+    fullName: 'Wells Fargo Bank, N.A.',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '121000247',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Wells Fargo bank feeds truncate transaction history at 90 days. Convert older Wells Fargo PDF statements into certified .QBO Web Connect files in seconds.',
+    painPoint: 'Multi-column check listings, daily ledger balances, and ATM deposit breakdown',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 4021 / Image Check',
+    keywords: ['WELLS FARGO', 'WELLSFARGO']
+  },
+  {
+    id: 'bank-of-america',
+    name: 'Bank of America',
+    fullName: 'Bank of America, N.A.',
+    org: 'Bank of America',
+    fid: '6812',
+    bid: '6812',
+    routing: '026009593',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Bank of America limits automatic bank feeds to the last 90 days. For previous tax years or quarterly audits, convert BofA PDF statements to .QBO.',
+    painPoint: 'Embedded check registers, multi-line Zelle/wire payees, and running balance reconciliation',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #5521 in sub-table',
+    keywords: ['BANK OF AMERICA', 'BOFA', 'B OF A']
+  },
+  {
+    id: 'citi',
+    name: 'Citibank',
+    fullName: 'Citibank, N.A.',
+    org: 'Citibank',
+    fid: '24909',
+    bid: '24909',
+    routing: '021000089',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Citibank live bank feeds only pull recent records. For tax filings or catch-up bookkeeping spanning prior years, convert your Citi PDF statements here.',
+    painPoint: 'Combined debits and credits, multi-currency international wires, and Costco card statements',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'CHECK 3301',
+    keywords: ['CITIBANK', 'CITI', 'CITIGROUP']
+  },
+  {
+    id: 'capital-one',
+    name: 'Capital One',
+    fullName: 'Capital One Bank (USA), N.A.',
+    org: 'Capital One',
+    fid: '15688',
+    bid: '15688',
+    routing: '051405515',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Capital One Spark Business and 360 accounts only sync recent transactions. Convert Spark PDF statements to .QBO without inverted liability signs.',
+    painPoint: 'Spark business cards listing charges as positive numbers and fragmented vendor codes',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'CHECK #1021',
+    keywords: ['CAPITAL ONE', 'CAPITALONE', 'SPARK BUSINESS']
+  },
+  {
+    id: 'amex',
+    name: 'American Express',
+    fullName: 'American Express Company',
+    org: 'AMEX',
+    fid: '3101',
+    bid: '3101',
+    routing: '000000000',
+    accountTypeDefault: 'CREDITLINE',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'American Express direct bank connections only fetch up to 90 days. LedgerSnap converts multi-page Amex Platinum, Gold, and Blue Business statements to .QBO with correct negative charge signs.',
+    painPoint: 'Credit card liability signs inverted by generic CSV tools, merchant category splits, and foreign FX fees',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'N/A (Credit Card)',
+    keywords: ['AMERICAN EXPRESS', 'AMEX', 'CENTURION']
+  },
+  {
+    id: 'us-bank',
+    name: 'U.S. Bank',
+    fullName: 'U.S. Bank National Association',
+    org: 'US Bank',
+    fid: '1465',
+    bid: '1465',
+    routing: '091000022',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'U.S. Bank direct feeds cap historical downloads at 90 days. Convert your U.S. Bank PDF statements directly into certified QuickBooks Web Connect files.',
+    painPoint: 'Commercial checking summary tables, daily ledger balance checks, and merchant processing batches',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #8841',
+    keywords: ['U.S. BANK', 'US BANK', 'USBANK']
+  },
+  {
+    id: 'pnc',
+    name: 'PNC Bank',
+    fullName: 'PNC Bank, National Association',
+    org: 'PNC Bank',
+    fid: '4332',
+    bid: '4332',
+    routing: '043000096',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'PNC Bank Virtual Wallet and Business checking feeds cut off at 90 days. Convert your PNC PDF statements to .QBO without duplicate entries.',
+    painPoint: 'Virtual Wallet multi-account layouts (Spend, Reserve, Growth) and separate check listing grids',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 2012',
+    keywords: ['PNC', 'PNC BANK']
+  },
+  {
+    id: 'td-bank',
+    name: 'TD Bank',
+    fullName: 'TD Bank, N.A.',
+    org: 'TD Bank',
+    fid: '10912',
+    bid: '10912',
+    routing: '011103093',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'TD Bank feeds only supply 90 days of transaction history. Convert multi-page TD Bank statements to .QBO with automated balance reconciliation.',
+    painPoint: 'Extensive debit card registers, multiple store locations, and multi-page statements exceeding 30 pages',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #3014',
+    keywords: ['TD BANK', 'TD AMERITRADE']
+  },
+  {
+    id: 'truist',
+    name: 'Truist',
+    fullName: 'Truist Financial Corporation (BB&T and SunTrust)',
+    org: 'Truist',
+    fid: '12811',
+    bid: '12811',
+    routing: '053000196',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Truist direct feeds disconnect frequently and limit historical sync to 90 days. Convert Truist, SunTrust, or BB&T PDF statements seamlessly.',
+    painPoint: 'Merged BB&T and SunTrust legacy statement layouts and check register formatting',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 9182',
+    keywords: ['TRUIST', 'SUNTRUST', 'BB&T']
+  },
+  {
+    id: 'regions',
+    name: 'Regions Bank',
+    fullName: 'Regions Bank',
+    org: 'Regions Bank',
+    fid: '1007',
+    bid: '1007',
+    routing: '062000019',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Regions Bank online banking only exports recent quarters. Use LedgerSnap to convert multi-year Regions PDF statements to QuickBooks.',
+    painPoint: 'LifeGreen checking multi-line descriptions and check sequence tables',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #1245',
+    keywords: ['REGIONS', 'REGIONS BANK']
+  },
+  {
+    id: 'fifth-third',
+    name: 'Fifth Third Bank',
+    fullName: 'Fifth Third Bank, N.A.',
+    org: 'Fifth Third Bank',
+    fid: '1011',
+    bid: '1011',
+    routing: '042000314',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Fifth Third 5/3 Bank feeds restrict historical imports to 90 days. Convert historical 5/3 statement PDFs to .QBO with 1-click.',
+    painPoint: 'Electronic banking transaction codes and 5/3 business checking running balances',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 7712',
+    keywords: ['FIFTH THIRD', '5/3 BANK']
+  },
+  {
+    id: 'citizens',
+    name: 'Citizens Bank',
+    fullName: 'Citizens Bank, N.A.',
+    org: 'Citizens Bank',
+    fid: '2440',
+    bid: '2440',
+    routing: '011500120',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Citizens Bank direct connect cuts off at 90 days. Easily import older Citizens statements into QuickBooks Online without manual typing.',
+    painPoint: 'Citizens commercial cash flow ledgers and check payment registers',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #4421',
+    keywords: ['CITIZENS', 'CITIZENS BANK']
+  },
+  {
+    id: 'huntington',
+    name: 'Huntington Bank',
+    fullName: 'The Huntington National Bank',
+    org: 'Huntington National Bank',
+    fid: '1014',
+    bid: '1014',
+    routing: '044000024',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Huntington 24-Hour Grace checking statements older than 90 days cannot be pulled via bank feed. Upload Huntington PDFs to get compliant .QBO files.',
+    painPoint: 'Huntington 24-Hour Grace transfers and separate debit card register columns',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 6150',
+    keywords: ['HUNTINGTON', 'HUNTINGTON BANK']
+  },
+  {
+    id: 'keybank',
+    name: 'KeyBank',
+    fullName: 'KeyBank National Association',
+    org: 'KeyBank',
+    fid: '1016',
+    bid: '1016',
+    routing: '041001039',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'KeyBank direct feed limits historical synchronization to 90 days. Convert KeyBank PDF statements into validated QuickBooks Web Connect files.',
+    painPoint: 'KeyBank Business Rewards checking and check clearing sub-tables',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #2291',
+    keywords: ['KEYBANK', 'KEY BANK']
+  },
+  {
+    id: 'navy-federal',
+    name: 'Navy Federal Credit Union',
+    fullName: 'Navy Federal Credit Union',
+    org: 'Navy Federal',
+    fid: '2490',
+    bid: '2490',
+    routing: '256074974',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Navy Federal Credit Union feeds frequently disconnect or fail to import historical data. LedgerSnap converts NFCU statements into 100% compliant .QBO files.',
+    painPoint: 'NFCU share accounts (Share 001, Share 002) combined on single monthly statements',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 8101',
+    keywords: ['NAVY FEDERAL', 'NFCU']
+  },
+  {
+    id: 'usaa',
+    name: 'USAA',
+    fullName: 'USAA Federal Savings Bank',
+    org: 'USAA',
+    fid: '6781',
+    bid: '6781',
+    routing: '314074269',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'USAA bank feeds restrict transaction history to the most recent 90 days. Convert USAA military checking and credit card PDFs to .QBO.',
+    painPoint: 'USAA electronic transfer memos, insurance premiums, and combined deposit tables',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #5502',
+    keywords: ['USAA', 'USAA FEDERAL SAVINGS']
+  },
+  {
+    id: 'schwab',
+    name: 'Charles Schwab',
+    fullName: 'Charles Schwab Bank, SSB',
+    org: 'Charles Schwab',
+    fid: '1018',
+    bid: '1018',
+    routing: '121202211',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Charles Schwab Bank Investor Checking feeds drop transactions older than 90 days. Convert Schwab monthly PDF statements to .QBO with zero errors.',
+    painPoint: 'Brokerage cash sweep transactions, interest credits, and ATM fee rebates',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check 1002',
+    keywords: ['SCHWAB', 'CHARLES SCHWAB']
+  },
+  {
+    id: 'fidelity',
+    name: 'Fidelity',
+    fullName: 'Fidelity Investments',
+    org: 'Fidelity',
+    fid: '1019',
+    bid: '1019',
+    routing: '101205681',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Fidelity Cash Management and brokerage accounts require manual statement imports for older periods. Convert Fidelity PDFs to .QBO in seconds.',
+    painPoint: 'Cash management sweep dividends, debit card transactions, and trade settlements',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #7210',
+    keywords: ['FIDELITY', 'FIDELITY INVESTMENTS']
+  },
+  {
+    id: 'mercury',
+    name: 'Mercury',
+    fullName: 'Mercury Technologies (Evolve Bank / Choice Financial)',
+    org: 'JPMorgan Chase Bank',
+    fid: '10898',
+    bid: '10898',
+    routing: '084109404',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Mercury startup banking statements often need to be imported for historical catch-up tax filings. Convert Mercury PDF statements directly to QuickBooks.',
+    painPoint: 'High-volume venture capital wires, international treasury transactions, and multi-entity accounts',
+    dateFormatExample: 'YYYY-MM-DD or MM/DD/YYYY',
+    checkNumPattern: 'N/A (Wires / ACH)',
+    keywords: ['MERCURY', 'MERCURY.COM', 'EVOLVE BANK']
+  },
+  {
+    id: 'relay',
+    name: 'Relay Financial',
+    fullName: 'Relay Financial (Thread Bank)',
+    org: 'JPMorgan Chase Bank',
+    fid: '10898',
+    bid: '10898',
+    routing: '053112929',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Relay Financial multi-account Profit First setups can be converted to QuickBooks .QBO with clean vendor names and zero duplicate transactions.',
+    painPoint: 'Profit First multi-account statements and collaborative bookkeeping transfers',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #1005',
+    keywords: ['RELAY', 'RELAY FINANCIAL', 'THREAD BANK']
+  },
+  {
+    id: 'brex',
+    name: 'Brex',
+    fullName: 'Brex Cash & Corporate Card',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '000000000',
+    accountTypeDefault: 'CREDITLINE',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Brex corporate credit card statements must be imported with proper liability signs. LedgerSnap ensures Brex charges import as negative debits in QuickBooks.',
+    painPoint: 'Corporate card charges listed as positive numbers causing inverted QuickBooks registers',
+    dateFormatExample: 'YYYY-MM-DD or MM/DD/YYYY',
+    checkNumPattern: 'N/A (Card Transactions)',
+    keywords: ['BREX']
+  },
+  {
+    id: 'ramp',
+    name: 'Ramp',
+    fullName: 'Ramp Business Card',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '000000000',
+    accountTypeDefault: 'CREDITLINE',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Ramp business card statements require exact Web Connect credit card formatting. Convert Ramp PDF statements to .QBO with automated sign normalization.',
+    painPoint: 'Multi-employee corporate cards, reimbursement batches, and cashback credits',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'N/A (Card Transactions)',
+    keywords: ['RAMP', 'RAMP CARD']
+  },
+  {
+    id: 'bluevine',
+    name: 'Bluevine',
+    fullName: 'Bluevine Business Checking (Coastal Community Bank)',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '125108398',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Bluevine business checking statements older than 90 days cannot be synced directly. Convert Bluevine PDF statements to .QBO with 100% balance validation.',
+    painPoint: 'Sub-account balances, bill pay debits, and line of credit interest fees',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #1020',
+    keywords: ['BLUEVINE', 'COASTAL COMMUNITY BANK']
+  },
+  {
+    id: 'novo',
+    name: 'Novo',
+    fullName: 'Novo Platform Inc (Middlesex Federal Savings)',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '211370545',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Novo small business checking bank feeds restrict historical sync. Convert Novo PDF statements into certified Intuit Web Connect .QBO files.',
+    painPoint: 'Stripe payouts, square card deposits, and reserve sub-ledger transfers',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Check #902',
+    keywords: ['NOVO', 'MIDDLESEX FEDERAL']
+  },
+  {
+    id: 'found',
+    name: 'Found',
+    fullName: 'Found Technologies (Piermont Bank)',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '026014902',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Found self-employed banking statements can be converted to QuickBooks .QBO to separate personal and business expenses effortlessly.',
+    painPoint: 'Automated tax withholding deductions and schedule C expense categories',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'N/A (Electronic)',
+    keywords: ['FOUND', 'FOUND BANK']
+  },
+  {
+    id: 'paypal',
+    name: 'PayPal',
+    fullName: 'PayPal Business Account',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '000000000',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'PayPal bank feeds frequently cause duplicate gross/fee rows. LedgerSnap parses PayPal statements into clean net deposits and fee debits.',
+    painPoint: 'Gross sales versus processing fee splits, dispute holds, and currency conversions',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Transaction ID #',
+    keywords: ['PAYPAL']
+  },
+  {
+    id: 'stripe',
+    name: 'Stripe',
+    fullName: 'Stripe Payments & Treasury',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '000000000',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Stripe payout reports and balance statements can be converted directly into QuickBooks .QBO files with accurate fee splits and batch reconciliations.',
+    painPoint: 'Payout bundle reconciliations, dispute reserves, and multi-currency balances',
+    dateFormatExample: 'YYYY-MM-DD or MM/DD/YYYY',
+    checkNumPattern: 'Transfer po_***',
+    keywords: ['STRIPE']
+  },
+  {
+    id: 'square',
+    name: 'Square',
+    fullName: 'Block Inc / Square Financial Services',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '124303254',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Square POS banking and settlement statements can be converted to QuickBooks .QBO with clean vendor payees and zero duplicate sales rows.',
+    painPoint: 'Daily batch settlement reconciliations and instant deposit fee deductions',
+    dateFormatExample: 'MM/DD/YYYY (e.g. 10/16/2026)',
+    checkNumPattern: 'Settlement ID',
+    keywords: ['SQUARE', 'BLOCK INC']
+  },
+  {
+    id: 'wise',
+    name: 'Wise',
+    fullName: 'Wise US Inc (formerly TransferWise)',
+    org: 'Wells Fargo',
+    fid: '3000',
+    bid: '3000',
+    routing: '000000000',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: '90 days',
+    directFeedLimitNotice: 'Wise multi-currency borderless account statements can be converted to QuickBooks .QBO or Excel with accurate currency codes and FX fee separation.',
+    painPoint: 'Multi-currency balances (USD, EUR, GBP) on a single statement with exchange rate conversions',
+    dateFormatExample: 'DD/MM/YYYY or MM/DD/YYYY',
+    checkNumPattern: 'Transfer ID',
+    keywords: ['WISE', 'TRANSFERWISE']
+  }
+];
+
+function generateBankLandingConfig(inst) {
+  const isCreditCard = inst.accountTypeDefault === 'CREDITLINE';
+  const slugStatementToQbo = `${inst.id}-statement-to-qbo`;
+  const slugPdfToQbo = `${inst.id}-pdf-to-qbo`;
+  const slugPdfToQboOnline = `${inst.id}-pdf-to-quickbooks-online`;
+  const slugPdfToCsv = `${inst.id}-pdf-to-csv`;
+
+  const faqs = [
+    {
+      q: `Why can’t I download historical statements older than 90 days from ${inst.name} into QuickBooks?`,
+      a: `Intuit Bank Feeds limit automatic direct-connect syncing to between 30 and 90 days for ${inst.name}. For prior quarters or tax-season catch-up bookkeeping, ${inst.name} only offers PDF statements. LedgerSnap turns those PDF statements into certified Intuit Web Connect (.QBO) files with valid <INTU.BID>${inst.bid}</INTU.BID> headers that import with 1-click.`
+    },
+    {
+      q: `Does LedgerSnap support both ${inst.name} business accounts and personal statements?`,
+      a: `Yes. LedgerSnap has pre-tuned layout algorithms for both ${inst.name} Commercial/Business accounts and Personal checking, savings, and credit cards. It properly maps account numbers, transaction types, and check numbers.`
+    },
+    {
+      q: `How does LedgerSnap handle ${inst.name} check registers and check numbers?`,
+      a: `${inst.name} statements often print check numbers in separate 3-column sub-tables or inside payee text (e.g. "${inst.checkNumPattern}"). LedgerSnap extracts the exact check number into the Intuit <CHECKNUM> tag right after <FITID>, mapping directly to the QuickBooks Check Number column.`
+    },
+    {
+      q: `Will importing ${inst.name} files cause duplicate transactions in QuickBooks?`,
+      a: `No. LedgerSnap generates 100% deterministic cryptographic <FITID> hashes (SHA-256) for every transaction based on account ID, date, amount, and payee string. Re-importing overlapping periods will cause QuickBooks to automatically skip already-imported entries.`
+    },
+    {
+      q: `Are my ${inst.name} financial records private and secure during conversion?`,
+      a: `Yes. LedgerSnap processes files strictly in volatile ephemeral RAM memory. Your bank statement is never stored on disk, never retained in a database, and never used to train AI models. Hosted on SOC 2 Type II certified cloud infrastructure.`
+    }
+  ];
+
+  return {
+    id: inst.id,
+    slug: slugStatementToQbo,
+    aliases: [slugPdfToQbo, slugPdfToQboOnline, slugPdfToCsv],
+    name: inst.name,
+    fullName: inst.fullName,
+    org: inst.org,
+    fid: inst.fid,
+    bid: inst.bid,
+    routing: inst.routing,
+    accountTypeDefault: inst.accountTypeDefault,
+    directFeedLimit: inst.directFeedLimit,
+    directFeedLimitNotice: inst.directFeedLimitNotice,
+    painPoint: inst.painPoint,
+    dateFormatExample: inst.dateFormatExample,
+    checkNumPattern: inst.checkNumPattern,
+    metaTitle: `Convert ${inst.name} Statement PDF to QuickBooks (.QBO) & Excel | LedgerSnap`,
+    metaDescription: `Convert ${inst.name} PDF bank and credit card statements into certified QuickBooks Online (.QBO), Desktop Web Connect, and Excel. 100% balance reconciliation.`,
+    heroH1: `Convert ${inst.name} PDF Statements to QuickBooks (.QBO) & Excel in Seconds`,
+    heroSub: `Import historical ${inst.name} statements beyond the 90-day bank feed limit. Converts multi-page checking, savings, and card statements into certified Intuit Web Connect (.QBO) files with zero column mapping errors.`,
     features: [
-      'Bypasses Chase & QuickBooks 90-day historical download limitation',
-      'Accurately separates Chase combined debit/credit transaction columns',
-      'Preserves multi-line Chase check numbers, wire references, and Zelle payees',
-      'Full mathematical checksum verification against Chase opening & closing balances'
+      `Bypasses the ${inst.name} 90-day historical download limitation in QuickBooks`,
+      `Certified ${inst.name} Intuit FID block (<INTU.BID>${inst.bid}</INTU.BID>) prevents Error OL-222`,
+      `Extracts embedded check numbers and check image sub-tables accurately`,
+      `Automated penny-level mathematical reconciliation (Opening + Credits - Debits = Closing Balance)`
     ],
     stepGuide: {
-      title: 'How to Import JPMorgan Chase PDF Statements into QuickBooks Online & Desktop',
+      title: `How to Import ${inst.name} PDF Statements into QuickBooks Online & Desktop`,
       steps: [
         {
           num: 1,
-          title: 'Upload Chase PDF Statement',
-          desc: 'Drag and drop your Chase monthly PDF statement (checking, savings, or Ink/Sapphire business credit card) into LedgerSnap.'
+          title: `Upload ${inst.name} PDF Statement`,
+          desc: `Drag and drop your monthly ${inst.name} statement PDF into the converter above. 1 free statement included.`
         },
         {
           num: 2,
-          title: 'Instant In-Memory Conversion',
-          desc: 'LedgerSnap runs balance checksum reconciliation and builds a compliant Intuit Web Connect (.QBO) file with certified Chase FID tags (<INTU.BID>3000).'
+          title: `Instant In-Memory Balance Reconciliation`,
+          desc: `LedgerSnap verifies that Opening Balance + Credits - Debits matches Closing Balance to the exact penny.`
         },
         {
           num: 3,
-          title: 'Import Direct to QuickBooks',
-          desc: 'In QuickBooks Online, go to Banking > Bank Transactions > Upload from file, select the .QBO file, and match it to your Chase account.'
+          title: `Import Direct to QuickBooks`,
+          desc: `Download your certified .QBO file. In QuickBooks Online, click Banking > Upload from file, and match it to your ${inst.name} account.`
         }
       ]
     },
-    faqs: [
-      {
-        q: 'Why can’t I download statements older than 90 days from Chase directly into QuickBooks?',
-        a: 'Intuit Bank Feeds only sync between 30 and 90 days of live historical data from JPMorgan Chase. For past quarters or annual tax catch-up, Chase only provides PDF statements. LedgerSnap bridges this gap by turning your Chase PDFs into certified .QBO Web Connect files that import into the QuickBooks register with one click.'
-      },
-      {
-        q: 'Does LedgerSnap support Chase Ink Business and Sapphire credit cards?',
-        a: 'Yes. LedgerSnap has pre-tuned layout algorithms for both Chase Business and Personal accounts, including Ink Business Unlimited, Ink Cash, Sapphire Preferred, and personal checking accounts.'
-      },
-      {
-        q: 'How does LedgerSnap handle Chase multi-line transaction payees?',
-        a: 'Chase statements often break merchant names, store IDs, and transaction locations across 2 to 3 lines. Generic CSV tools split these into duplicate ghost rows. LedgerSnap merges multi-line descriptions into a single clean payee string.'
-      }
-    ]
-  },
-  {
-    slug: 'bank-of-america-pdf-to-qbo',
-    name: 'Bank of America',
-    fullName: 'Bank of America, N.A.',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Merged check numbers, multi-line Zelle/wire descriptions, and running balance verification',
-    metaTitle: 'Convert Bank of America PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Bank of America checking and credit card PDF statements to QuickBooks (.QBO) & Excel. Automatic check number matching and balance reconciliation.',
-    heroH1: 'Convert Bank of America PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Transform multi-column Bank of America monthly checking, savings, and corporate card statements into certified .QBO Web Connect files. Automatically parses BofA check image registers and reconciles balances without manual entry.',
-    features: [
-      'Extracts embedded check numbers and check image tables accurately',
-      'Parses complex BofA multi-line wire, ACH, and electronic deposit descriptions',
-      'Certified Bank of America Intuit FID tags (<INTU.BID>3003) for flawless import',
-      'Supports business checking, merchant services, and Merrill cash management accounts'
+    mappingPreview: [
+      { field: 'Date', raw: inst.dateFormatExample, qboTag: '<DTPOSTED>20261016120000[0:GMT]', qbBehavior: 'Preserved at Noon GMT so US timezones never shift transaction calendar day' },
+      { field: 'Check Number', raw: inst.checkNumPattern, qboTag: isCreditCard ? 'N/A' : '<CHECKNUM>1042', qbBehavior: 'Maps to QuickBooks Check # column' },
+      { field: 'Institution ID', raw: `${inst.name} (<INTU.BID>${inst.bid})`, qboTag: `<FI><ORG>${inst.org}</ORG><FID>${inst.fid}</FID></FI><INTU.BID>${inst.bid}</INTU.BID>`, qbBehavior: 'Eliminates QuickBooks Web Connect Error OL-222 & OL-301' },
+      { field: 'Payee / Description', raw: 'POS DEBIT VISA *4412 AMZN Mktp US*...', qboTag: '<NAME>Amazon Marketplace', qbBehavior: 'Clean 32-char payee inside <NAME>, full raw bank string in <MEMO>' },
+      { field: 'Sign Convention', raw: isCreditCard ? 'Charge listed positive on PDF' : 'Withdrawal listed in Debit column', qboTag: isCreditCard ? '<TRNAMT>-85.00 (DEBIT)' : '<TRNAMT>-85.00 (DEBIT)', qbBehavior: 'Strict Intuit liability rules: purchases are negative, payments positive' }
     ],
-    stepGuide: {
-      title: 'Importing Bank of America Statements into QuickBooks Online',
-      steps: [
-        { num: 1, title: 'Upload BofA PDF', desc: 'Select your Bank of America monthly statement PDF.' },
-        { num: 2, title: 'Automatic Table Parsing', desc: 'LedgerSnap splits deposits, withdrawals, and check images into structured rows.' },
-        { num: 3, title: 'Import into QuickBooks', desc: 'Download your .QBO file and import directly into QuickBooks Online Banking.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'How does LedgerSnap handle Bank of America check registers?',
-        a: 'Bank of America statements print check numbers and amounts in separate 3-column sub-tables. Regular OCR software scrambles these into debit amounts without check IDs. LedgerSnap reconstructs each check number as an Intuit <CHECKNUM> tag with exact dates.'
-      }
-    ]
-  },
-  {
-    slug: 'wells-fargo-pdf-to-qbo',
-    name: 'Wells Fargo',
-    fullName: 'Wells Fargo Bank, N.A.',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Multi-column check listings, daily ledger balances, and ATM deposit breakdown',
-    metaTitle: 'Convert Wells Fargo PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Wells Fargo business checking and commercial PDF statements to QuickBooks (.QBO) & Excel. Zero data retention, instant conversion.',
-    heroH1: 'Convert Wells Fargo PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Convert multi-page Wells Fargo statements into validated QuickBooks Web Connect files. Solves column alignment issues in Wells Fargo commercial accounts, daily ledger reconciliations, and wire transactions.',
-    features: [
-      'Converts Wells Fargo multi-page commercial and small business checking statements',
-      'Preserves Wells Fargo electronic payment references and bill pay details',
-      'Validates closing balances against daily ledger summary tables',
-      'Exports certified .QBO files compatible with all QuickBooks versions (2018-2026)'
-    ],
-    stepGuide: {
-      title: 'How to Convert and Import Wells Fargo Statements',
-      steps: [
-        { num: 1, title: 'Upload Wells Fargo PDF', desc: 'Drop your Wells Fargo checking or credit card statement.' },
-        { num: 2, title: 'Mathematical Verification', desc: 'LedgerSnap matches total debits, total credits, and closing balance.' },
-        { num: 3, title: 'Upload to QuickBooks', desc: 'Import the generated .QBO file with zero mapping required.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Does LedgerSnap work with Wells Fargo Commercial and Treasury accounts?',
-        a: 'Yes. LedgerSnap accurately parses both standard small business statements and high-volume Wells Fargo Commercial Electronic Office (CEO) PDF statements.'
-      }
-    ]
-  },
-  {
-    slug: 'citibank-pdf-to-qbo',
-    name: 'Citibank',
-    fullName: 'Citibank, N.A. (Citi)',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Complex corporate statements, foreign transaction fees, and multi-currency registers',
-    metaTitle: 'Convert Citibank PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Citibank checking, commercial, and Costco Anywhere card PDF statements to QuickBooks (.QBO) and Excel spreadsheets in seconds.',
-    heroH1: 'Convert Citibank PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Effortlessly convert Citibank corporate checking and Citi credit card statements into QuickBooks Online .QBO registers. Accurately handles Costco Citi cards, merchant processing statements, and multi-currency transactions.',
-    features: [
-      'Supports Citi Commercial Bank, CitiBusiness, and personal checking accounts',
-      'Custom parsing for Costco Anywhere Visa and Citi Double Cash credit cards',
-      'Calculates accurate balances with full mathematical reconciliation',
-      'Certified Intuit FID tags (<INTU.BID>24909)'
-    ],
-    stepGuide: {
-      title: 'Importing Citi Statements into QuickBooks',
-      steps: [
-        { num: 1, title: 'Upload Citi PDF', desc: 'Upload your Citibank statement.' },
-        { num: 2, title: 'In-Memory Processing', desc: 'Table parsing extracts line-item transactions without retaining data.' },
-        { num: 3, title: 'Import .QBO File', desc: 'One-click upload into QuickBooks Online banking feeds.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Can I convert Citi credit card statements with foreign currency conversions?',
-        a: 'Yes. LedgerSnap extracts the settled USD amount and original foreign currency reference cleanly into the transaction memo.'
-      }
-    ]
-  },
-  {
-    slug: 'capital-one-pdf-to-qbo',
-    name: 'Capital One',
-    fullName: 'Capital One Financial Corporation',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Spark Business card expense categorizations, merged fee lines, and multi-card employee sub-accounts',
-    metaTitle: 'Convert Capital One PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Capital One Spark Business and 360 checking PDF statements to QuickBooks (.QBO) & Excel. Separate employee cardholder expenses automatically.',
-    heroH1: 'Convert Capital One PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Designed for accountants handling Capital One Spark Business credit cards and 360 checking accounts. Accurately parses employee card spending sub-tables and statement credits into clean QuickBooks bank feeds.',
-    features: [
-      'Segregates Capital One Spark Business transactions by individual employee cardholder',
-      'Handles multi-page Capital One 360 checking and high-yield savings statements',
-      'Correctly maps interest payments, cash back credits, and annual fees',
-      'Generates certified Intuit Web Connect (.QBO) files with <INTU.BID> tags'
-    ],
-    stepGuide: {
-      title: 'Importing Capital One Statements to QuickBooks Online',
-      steps: [
-        { num: 1, title: 'Upload Capital One Statement', desc: 'Upload your Spark Business or 360 PDF.' },
-        { num: 2, title: 'Reconcile Transactions', desc: 'LedgerSnap aligns cardholders and reconciles closing balances.' },
-        { num: 3, title: 'Import to QBO', desc: 'Import directly into QuickBooks Online Bank Transactions.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Does LedgerSnap separate employee cards on Capital One Spark accounts?',
-        a: 'Yes! Capital One prints transactions grouped under each employee name. LedgerSnap preserves employee cardholder metadata in the .QBO memo line so you can assign expenses to the right class or vendor in QuickBooks.'
-      }
-    ]
-  },
-  {
-    slug: 'mercury-bank-pdf-to-qbo',
-    name: 'Mercury Bank',
-    fullName: 'Mercury Technologies (Choice Financial Group / Evolve Bank & Trust)',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Multi-account startup tech statements, venture debt wires, and Stripe/PayPal batch payouts',
-    metaTitle: 'Convert Mercury Bank PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Mercury startup bank PDF statements to QuickBooks (.QBO) and Excel. Reconcile Stripe payouts, venture wires, and corporate debit cards.',
-    heroH1: 'Convert Mercury Bank PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'The dedicated converter for tech startups, SaaS founders, and venture-backed companies. Transform Mercury checking, savings, and corporate credit statements into clean QuickBooks and Xero registers.',
-    features: [
-      'Specialized parser for Mercury checking, treasury, and credit statements',
-      'Reconciles complex Stripe, Shopify, and PayPal batch payout lines',
-      'Preserves wire recipient details, counterparty names, and internal transfer memos',
-      'Instant conversion to certified .QBO Web Connect and Excel formats'
-    ],
-    stepGuide: {
-      title: 'How to Import Mercury Statements into QuickBooks Online',
-      steps: [
-        { num: 1, title: 'Upload Mercury PDF', desc: 'Upload your monthly Mercury statement.' },
-        { num: 2, title: 'Extract Wires & Payouts', desc: 'All transactions, counterparties, and fees are extracted in memory.' },
-        { num: 3, title: 'Upload to QuickBooks', desc: 'Match with your Mercury checking ledger in QuickBooks Online.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Why use LedgerSnap if Mercury has direct QuickBooks integration?',
-        a: 'Mercury direct bank feeds occasionally break or fail to sync historical transactions older than 90 days. For annual audits, tax filings, or catch-up bookkeeping, LedgerSnap converts the official historical PDFs into flawless .QBO files.'
-      }
-    ]
-  },
-  {
-    slug: 'pnc-bank-pdf-to-qbo',
-    name: 'PNC Bank',
-    fullName: 'PNC Financial Services Group, Inc.',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Virtual Wallet statement tables, check register grids, and automated sweeping accounts',
-    metaTitle: 'Convert PNC Bank PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert PNC Bank business checking and Virtual Wallet PDF statements into certified QuickBooks (.QBO) and Excel. 100% accurate balance reconciliation.',
-    heroH1: 'Convert PNC Bank PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Easily convert PNC Bank commercial checking, Virtual Wallet, and treasury management PDF statements. Resolves check image column splitting and sweep account transfers.',
-    features: [
-      'Accurate parsing of PNC Virtual Wallet (Spend, Reserve, Growth) statements',
-      'Extracts check numbers and electronic payment memos reliably',
-      'Full mathematical balance validation against opening & closing totals',
-      'Zero installation: 100% cloud in-memory conversion'
-    ],
-    stepGuide: {
-      title: 'Importing PNC Bank Statements into QuickBooks Online',
-      steps: [
-        { num: 1, title: 'Upload PNC PDF', desc: 'Drop your PNC monthly checking statement.' },
-        { num: 2, title: 'Automatic Parsing', desc: 'LedgerSnap builds a validated .QBO file in seconds.' },
-        { num: 3, title: 'Upload to QBO', desc: 'One-click import into QuickBooks Online.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Does LedgerSnap support PNC treasury management and sweep accounts?',
-        a: 'Yes, LedgerSnap handles both personal Virtual Wallet statements and high-volume commercial sweep accounts.'
-      }
-    ]
-  },
-  {
-    slug: 'us-bank-pdf-to-qbo',
-    name: 'U.S. Bank',
-    fullName: 'U.S. Bancorp / U.S. Bank National Association',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Commercial checking statements, multi-column deposit breakdowns, and merchant card processing fees',
-    metaTitle: 'Convert U.S. Bank PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert U.S. Bank checking, commercial, and credit card PDF statements into certified QuickBooks (.QBO) & Excel. Fast, accurate, and private.',
-    heroH1: 'Convert U.S. Bank PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Transform U.S. Bank checking and commercial card PDF statements into certified QuickBooks .QBO registers. Accurately maps deposits, withdrawals, and merchant processing fees without manual data entry.',
-    features: [
-      'Parses U.S. Bank Silver, Gold, and Platinum business checking statements',
-      'Supports U.S. Bank commercial credit cards and Elavon merchant processing rows',
-      'Reconciles opening and closing balances with zero math discrepancies',
-      'Certified Intuit Web Connect file formatting'
-    ],
-    stepGuide: {
-      title: 'How to Import U.S. Bank Statements to QuickBooks',
-      steps: [
-        { num: 1, title: 'Upload U.S. Bank PDF', desc: 'Drag your statement into LedgerSnap.' },
-        { num: 2, title: 'Fast Conversion', desc: 'Our engine extracts transaction rows in RAM memory.' },
-        { num: 3, title: 'Import to QuickBooks', desc: 'Upload the .QBO file into your QuickBooks bank feed.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Does LedgerSnap support Elavon merchant deposit breakdowns on U.S. Bank statements?',
-        a: 'Yes. U.S. Bank statements featuring daily Elavon batch credit card deposits and batch merchant fees are split into individual accounting transactions cleanly.'
-      }
-    ]
-  },
-  {
-    slug: 'td-bank-pdf-to-qbo',
-    name: 'TD Bank',
-    fullName: 'TD Bank, N.A. (America’s Most Convenient Bank)',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Multi-column electronic banking tables, daily balance summaries, and ACH payroll entries',
-    metaTitle: 'Convert TD Bank PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert TD Bank business checking and personal PDF statements into QuickBooks (.QBO) and Excel spreadsheets in seconds. Try 1 statement free.',
-    heroH1: 'Convert TD Bank PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Convert TD Bank checking, savings, and credit card PDF statements into certified QuickBooks (.QBO) files. Handles TD Convenience Checking, Business Simple Checking, and ACH wire transactions flawlessly.',
-    features: [
-      'Full support for TD Bank US checking and business convenience accounts',
-      'Extracts check numbers, ACH payroll debits, and electronic transfers',
-      'Performs mathematical checksums against TD Bank daily balance summaries',
-      'Compatible with QuickBooks Online, QuickBooks Desktop, and Xero'
-    ],
-    stepGuide: {
-      title: 'Importing TD Bank Statements into QuickBooks',
-      steps: [
-        { num: 1, title: 'Upload TD Bank PDF', desc: 'Select your monthly TD Bank PDF statement.' },
-        { num: 2, title: 'Instant Conversion', desc: 'LedgerSnap processes the PDF in ephemeral volatile memory.' },
-        { num: 3, title: 'Import to QuickBooks', desc: 'Upload your .QBO file into QuickBooks Online with zero mapping.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Can I convert TD Bank statements with hundreds of debit card transactions?',
-        a: 'Yes. LedgerSnap easily processes multi-page statements spanning 20, 50, or 100+ pages without choking or dropping rows.'
-      }
-    ]
-  },
-  {
-    slug: 'truist-bank-pdf-to-qbo',
-    name: 'Truist Bank',
-    fullName: 'Truist Financial Corporation (BB&T and SunTrust)',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Merged BB&T and SunTrust legacy statement formats, check image tables, and treasury registers',
-    metaTitle: 'Convert Truist Bank PDF Statements to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Truist Bank (formerly SunTrust and BB&T) PDF statements to QuickBooks (.QBO) & Excel in seconds. Zero data retention.',
-    heroH1: 'Convert Truist Bank PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'The ultimate PDF to QuickBooks converter for Truist Bank. Accurately handles unified Truist statements as well as legacy BB&T and SunTrust checking, savings, and commercial registers.',
-    features: [
-      'Supports Truist Business Checking, Simple Business Checking, and Commercial accounts',
-      'Compatible with legacy SunTrust and BB&T statement layouts',
-      'Accurate check number extraction and Zelle memo parsing',
-      'Strict balance checksum verification against Truist closing numbers'
-    ],
-    stepGuide: {
-      title: 'How to Import Truist Statements into QuickBooks',
-      steps: [
-        { num: 1, title: 'Upload Truist PDF', desc: 'Upload your Truist statement PDF.' },
-        { num: 2, title: 'Extract Data', desc: 'Tables and payees are cleaned and converted in memory.' },
-        { num: 3, title: 'Import to QBO', desc: 'Upload into QuickBooks Online Banking in one click.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Does LedgerSnap work with older SunTrust or BB&T statements from before the merger?',
-        a: 'Yes! Our layout detection engine automatically recognizes pre-merger SunTrust and BB&T formatting and converts them cleanly.'
-      }
-    ]
-  },
-  {
-    slug: 'silicon-valley-bank-pdf-to-qbo',
-    name: 'Silicon Valley Bank (SVB)',
-    fullName: 'Silicon Valley Bank (a division of First Citizens Bank)',
-    region: 'US',
-    isIsraeli: false,
-    painPoint: 'Venture capital wire feeds, startup treasury statements, and multi-entity account ledgers',
-    metaTitle: 'Convert Silicon Valley Bank (SVB) PDF to QuickBooks (.QBO) | LedgerSnap',
-    metaDescription: 'Convert Silicon Valley Bank (SVB) PDF statements into certified QuickBooks (.QBO) and Excel. Built for venture-backed startups and finance teams.',
-    heroH1: 'Convert Silicon Valley Bank (SVB) PDF Statements to QuickBooks (.QBO) & Excel',
-    heroSub: 'Designed for CFOs, controllers, and accountants at venture-backed startups. Turn multi-page SVB checking, money market, and venture debt statements into certified Intuit QuickBooks registers.',
-    features: [
-      'Specialized layout recognition for SVB First Citizens Bank statements',
-      'Preserves wire counterparty descriptions, venture funding deposits, and FX fees',
-      'Full mathematical balance validation against SVB closing balances',
-      'Zero-retention volatile RAM processing for maximum financial confidentiality'
-    ],
-    stepGuide: {
-      title: 'Importing SVB Statements into QuickBooks Online',
-      steps: [
-        { num: 1, title: 'Upload SVB Statement', desc: 'Upload your SVB monthly PDF statement.' },
-        { num: 2, title: 'In-Memory Extraction', desc: 'Transactions are extracted and verified against ledger summaries.' },
-        { num: 3, title: 'Import to QuickBooks', desc: 'Upload into QuickBooks Online with full vendor recognition.' }
-      ]
-    },
-    faqs: [
-      {
-        q: 'Is my SVB company data confidential during conversion?',
-        a: 'Yes. LedgerSnap processes files strictly in ephemeral RAM memory and deletes all traces immediately after file generation. We never train AI on financial records or store statements on disk.'
-      }
-    ]
+    faqs
+  };
+}
+
+export const SEO_BANKS = US_INSTITUTIONS.map(generateBankLandingConfig);
+
+export function findBankBySlug(slug = '') {
+  const clean = String(slug || '').trim().replace(/\/$/, '').toLowerCase();
+  for (const b of SEO_BANKS) {
+    if (b.slug === clean) return b;
+    if (b.aliases && b.aliases.includes(clean)) return b;
+    // Check pattern matching e.g. /convert/chase-statement-to-qbo, /convert/chase-pdf-to-quickbooks-online, /convert/chase-pdf-to-csv
+    if (clean === `${b.id}-statement-to-qbo` || clean === `${b.id}-pdf-to-quickbooks-online` || clean === `${b.id}-pdf-to-csv` || clean === `${b.id}-pdf-to-qbo`) {
+      return b;
+    }
   }
-];
+  return null;
+}

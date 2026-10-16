@@ -4,7 +4,7 @@ import {
   Search, ShieldCheck, Zap, Lock, Sparkles,
   RefreshCw, DollarSign, BarChart3, ChevronDown, Check,
   BookOpen, X, PieChart, Plus, Trash2, Edit3, Sliders,
-  Eye, Cookie, Cpu, Wrench
+  Eye, Cookie, Cpu, Wrench, FileText
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { initializePaddle } from '@paddle/paddle-js';
@@ -14,12 +14,22 @@ import ComparisonPage from './components/ComparisonPage';
 import GuidePage from './components/GuidePage';
 import LegalPage from './components/LegalPage';
 import ToolsPage from './components/ToolsPage';
+import BanksDirectoryPage from './components/BanksDirectoryPage';
 import Footer from './components/Footer';
-import { SEO_BANKS } from './data/seoBanks';
-import { SEO_COMPARISONS } from './data/seoComparisons';
-import { SEO_GUIDES } from './data/seoGuides';
-import { SEO_TOOLS } from './data/seoTools';
-import { cleanPayeeName, generateClientQbo } from './utils/qboUtils';
+import { SEO_BANKS, findBankBySlug, US_INSTITUTIONS } from './data/seoBanks';
+import { SEO_COMPARISONS, findComparisonBySlug } from './data/seoComparisons';
+import { SEO_GUIDES, findGuideBySlug } from './data/seoGuides';
+import { SEO_TOOLS, findToolBySlug } from './data/seoTools';
+import { 
+  cleanPayeeName, 
+  generateClientQbo, 
+  generateClientQfx,
+  generateClientOfx,
+  generateClientCsv3Col, 
+  generateClientCsv4Col, 
+  generateClientHashavshevetCsv,
+  BANK_INTU_PRESETS 
+} from './utils/qboUtils';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
 
@@ -129,6 +139,9 @@ export default function App() {
 
   // Interactive Review Grid, Reconciliation, and Export Settings State
   const [editableTransactions, setEditableTransactions] = useState([]);
+  const [isSideBySide, setIsSideBySide] = useState(false);
+  const [uploadedPdfBlobUrl, setUploadedPdfBlobUrl] = useState(null);
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState('all');
   const [exportSettings, setExportSettings] = useState({
     currency: 'USD',
     accountType: 'CHECKING',
@@ -393,10 +406,13 @@ export default function App() {
     }
   }, []);
 
+  const [cleanPayeesActive, setCleanPayeesActive] = useState(false);
+
   const initializeConversionSession = (result) => {
     setConversionData(result);
     setSelectedCategory('all');
     setAiCleanedSuccess(false);
+    setCleanPayeesActive(false);
 
     const txns = (result.preview || result.all_transactions || []).map((t, idx) => ({
       id: idx + 1,
@@ -405,7 +421,11 @@ export default function App() {
       memo: t.memo || t.description || 'Transaction',
       amount: parseFloat(t.amount || 0),
       balance: t.balance !== null && t.balance !== undefined ? parseFloat(t.balance) : null,
-      type: parseFloat(t.amount || 0) >= 0 ? 'Credit' : 'Debit'
+      type: t.classification || (parseFloat(t.amount || 0) >= 0 ? 'Credit' : 'Debit'),
+      check_num: t.check_num || '',
+      transition_error: Boolean(t.transition_error),
+      expected_balance: t.expected_balance !== undefined ? t.expected_balance : null,
+      diff: t.diff !== undefined ? t.diff : null
     }));
     setEditableTransactions(txns);
 
@@ -423,7 +443,7 @@ export default function App() {
 
     setExportSettings({
       currency: detectedCurr,
-      accountType: isCC ? 'CREDITCARD' : 'CHECKING',
+      accountType: isCC ? 'CREDITLINE' : 'CHECKING',
       accountId: result.summary?.account_id || '123456789',
       bankId: result.summary?.bank_id || '3000',
       intuBid: '3000',
@@ -457,10 +477,43 @@ export default function App() {
         const val = parseFloat(value) || 0;
         updated.amount = val;
         updated.type = val >= 0 ? 'Credit' : 'Debit';
+      } else if (field === 'type') {
+        updated.type = value;
+      } else if (field === 'check_num') {
+        updated.check_num = value;
+        if (value && updated.type !== 'CHECK') {
+          updated.type = 'CHECK';
+        }
       }
 
       return updated;
     }));
+  };
+
+  const handleInvertAllSigns = () => {
+    setEditableTransactions(prev => prev.map(t => {
+      const newAmt = -(t.amount || 0);
+      return {
+        ...t,
+        amount: Math.round(newAmt * 100) / 100,
+        type: newAmt >= 0 ? 'Credit' : 'Debit'
+      };
+    }));
+  };
+
+  const handleToggleCleanPayees = () => {
+    setCleanPayeesActive(prevActive => {
+      const nextActive = !prevActive;
+      setEditableTransactions(prev => prev.map(t => {
+        const raw = t.memo || t.description;
+        return {
+          ...t,
+          description: nextActive ? cleanPayeeName(raw, 32) : (raw.length > 32 ? raw.slice(0, 32) : raw),
+          memo: raw
+        };
+      }));
+      return nextActive;
+    });
   };
 
   const handleAddTransaction = () => {
@@ -474,7 +527,9 @@ export default function App() {
         memo: 'Manual Entry',
         amount: 0.00,
         balance: null,
-        type: 'Credit'
+        type: 'Credit',
+        check_num: '',
+        transition_error: false
       },
       ...prev
     ]);
@@ -496,6 +551,7 @@ export default function App() {
         memo: raw // preserve full raw original text in memo
       };
     }));
+    setCleanPayeesActive(true);
     setAiCleanedSuccess(true);
     triggerConfetti();
     setTimeout(() => setAiCleanedSuccess(false), 5000);
@@ -506,6 +562,12 @@ export default function App() {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Please upload a PDF bank statement.');
       return;
+    }
+
+    try {
+      setUploadedPdfBlobUrl(URL.createObjectURL(file));
+    } catch {
+      setUploadedPdfBlobUrl(null);
     }
 
     // Check if free trial already consumed on frontend
@@ -682,12 +744,18 @@ export default function App() {
         return;
       }
 
+      let ext = selectedFormat;
+      if (selectedFormat === 'csv_3col' || selectedFormat === 'csv_4col' || selectedFormat === 'hashavshevet_csv') ext = 'csv';
+      if (selectedFormat === 'hashavshevet_xlsx') ext = 'xlsx';
+      if (selectedFormat === 'hashavshevet_dat') ext = 'dat';
+      if (selectedFormat === 'qfx') ext = 'qfx';
+
       if (res.ok) {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `${baseFilename}.${selectedFormat}`);
+        link.setAttribute('download', `${baseFilename}.${ext}`);
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -706,36 +774,78 @@ export default function App() {
 
     // 2. Client-Side Fallback Generator
     try {
-      if (selectedFormat === 'qbo') {
-        const qboContent = generateClientQbo({
-          transactions: currentTxns,
-          bankName: conversionData.bank_name || 'Bank Statement',
-          accountId: exportSettings.accountId,
-          bankId: exportSettings.bankId,
-          currency: exportSettings.currency,
-          accountType: exportSettings.accountType,
-          exportMode: exportSettings.exportMode,
-          intuBid: exportSettings.intuBid,
-          dateFormat: exportSettings.dateFormat === 'auto' ? 'DD/MM/YYYY' : exportSettings.dateFormat,
-          openingBalance: exportSettings.openingBalance,
-          endingBalance: exportSettings.statementEndingBalance
-        });
-        const blob = new Blob([qboContent], { type: 'application/x-ofx' });
+      let ext = selectedFormat;
+      if (selectedFormat === 'csv_3col' || selectedFormat === 'csv_4col' || selectedFormat === 'hashavshevet_csv') ext = 'csv';
+      if (selectedFormat === 'hashavshevet_xlsx') ext = 'xlsx';
+      if (selectedFormat === 'hashavshevet_dat') ext = 'dat';
+      if (selectedFormat === 'qfx') ext = 'qfx';
+
+      if (selectedFormat === 'qbo' || selectedFormat === 'ofx' || selectedFormat === 'qfx') {
+        const qboContent = selectedFormat === 'qfx'
+          ? generateClientQfx({
+              transactions: currentTxns,
+              bankName: conversionData.bank_name || 'Bank Statement',
+              accountId: exportSettings.accountId,
+              bankId: exportSettings.bankId,
+              currency: exportSettings.currency,
+              accountType: exportSettings.accountType,
+              exportMode: exportSettings.exportMode,
+              intuBid: exportSettings.intuBid,
+              dateFormat: exportSettings.dateFormat === 'auto' ? 'DD/MM/YYYY' : exportSettings.dateFormat,
+              openingBalance: exportSettings.openingBalance,
+              endingBalance: exportSettings.statementEndingBalance
+            })
+          : generateClientQbo({
+              transactions: currentTxns,
+              bankName: conversionData.bank_name || 'Bank Statement',
+              accountId: exportSettings.accountId,
+              bankId: exportSettings.bankId,
+              currency: exportSettings.currency,
+              accountType: exportSettings.accountType,
+              exportMode: exportSettings.exportMode,
+              intuBid: exportSettings.intuBid,
+              dateFormat: exportSettings.dateFormat === 'auto' ? 'DD/MM/YYYY' : exportSettings.dateFormat,
+              openingBalance: exportSettings.openingBalance,
+              endingBalance: exportSettings.statementEndingBalance
+            });
+        const blob = new Blob([qboContent], { type: selectedFormat === 'qfx' ? 'application/vnd.intu.qfx' : 'application/x-ofx' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `${baseFilename}.qbo`);
+        link.setAttribute('download', `${baseFilename}.${ext}`);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         triggerConfetti();
-      } else if (selectedFormat === 'csv') {
-        let csv = "Date,Description,Amount,Type\n";
-        for (const t of currentTxns) {
-          csv += `"${t.date}","${(t.description || '').replace(/"/g, '""')}",${t.amount},"${t.amount >= 0 ? 'Credit' : 'Debit'}"\n`;
-        }
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      } else if (selectedFormat === 'csv_4col') {
+        const csvContent = generateClientCsv4Col(currentTxns);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${baseFilename}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        triggerConfetti();
+      } else if (selectedFormat === 'hashavshevet_csv') {
+        const csvContent = generateClientHashavshevetCsv(currentTxns);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${baseFilename}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        triggerConfetti();
+      } else {
+        // Default 3-col CSV
+        const csvContent = generateClientCsv3Col(currentTxns);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -910,9 +1020,13 @@ export default function App() {
 
   const allCurrentTransactions = editableTransactions.length > 0 ? editableTransactions : (conversionData?.preview || []);
 
-  const monthFiltered = selectedMonth === 'all'
+  const accountFiltered = selectedAccountFilter === 'all'
     ? allCurrentTransactions
-    : allCurrentTransactions.filter(t => {
+    : allCurrentTransactions.filter(t => (t.account_id || t.account_name || 'Primary') === selectedAccountFilter);
+
+  const monthFiltered = selectedMonth === 'all'
+    ? accountFiltered
+    : accountFiltered.filter(t => {
         const parts = t.date.split('/');
         return parts.length === 3 && `${parts[1]}/${parts[2]}` === selectedMonth;
       });
@@ -1081,10 +1195,14 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Programmatic SEO Landing Pages Routing (Bank Converters, Comparisons, Guides) */}
+      {/* Programmatic SEO Landing Pages Routing (Bank Converters, Comparisons, Guides, Tools, Banks Directory) */}
+      {!conversionData && (currentPath === '/banks' || currentPath === '/directory' || currentPath === '/banks/') && (
+        <BanksDirectoryPage onNavigate={handleNavigate} />
+      )}
+
       {!conversionData && currentPath.startsWith('/convert/') && (() => {
         const slug = currentPath.replace('/convert/', '').replace(/\/$/, '');
-        const bank = SEO_BANKS.find(b => b.slug === slug);
+        const bank = findBankBySlug(slug) || SEO_BANKS.find(b => b.slug === slug);
         if (bank) {
           return (
             <BankLandingPage 
@@ -1103,7 +1221,7 @@ export default function App() {
 
       {!conversionData && currentPath.startsWith('/compare/') && (() => {
         const slug = currentPath.replace('/compare/', '').replace(/\/$/, '');
-        const comparison = SEO_COMPARISONS.find(c => c.slug === slug);
+        const comparison = findComparisonBySlug(slug) || SEO_COMPARISONS.find(c => c.slug === slug);
         if (comparison) {
           return (
             <ComparisonPage 
@@ -1118,7 +1236,7 @@ export default function App() {
 
       {!conversionData && currentPath.startsWith('/guides/') && (() => {
         const slug = currentPath.replace('/guides/', '').replace(/\/$/, '');
-        const guide = SEO_GUIDES.find(g => g.slug === slug);
+        const guide = findGuideBySlug(slug) || SEO_GUIDES.find(g => g.slug === slug);
         if (guide) {
           return (
             <GuidePage 
@@ -1133,7 +1251,7 @@ export default function App() {
 
       {!conversionData && currentPath.startsWith('/tools/') && (() => {
         const slug = currentPath.replace('/tools/', '').replace(/\/$/, '');
-        const tool = SEO_TOOLS.find(t => t.slug === slug);
+        const tool = findToolBySlug(slug) || SEO_TOOLS.find(t => t.slug === slug);
         if (tool) {
           return (
             <ToolsPage 
@@ -1153,7 +1271,7 @@ export default function App() {
       )}
 
       {/* Homepage & Studio Content (Rendered on '/' or when a conversion is active) */}
-      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/') && !currentPath.startsWith('/tools/') && currentPath !== '/terms' && currentPath !== '/privacy' && currentPath !== '/refund')) && (
+      {(conversionData || (!currentPath.startsWith('/convert/') && !currentPath.startsWith('/compare/') && !currentPath.startsWith('/guides/') && !currentPath.startsWith('/tools/') && currentPath !== '/terms' && currentPath !== '/privacy' && currentPath !== '/refund' && currentPath !== '/banks' && currentPath !== '/directory')) && (
       <main style={{ flex: 1, maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '48px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           {/* Trust & Architecture Badges (Task 2) */}
@@ -1422,7 +1540,7 @@ export default function App() {
                           border: isReconciled ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.5)',
                           fontWeight: '700'
                         }}>
-                          {isReconciled ? '✓ 100% Reconciled' : `⚠ Discrepancy: ${curr}${balanceDiscrepancy.toFixed(2)}`}
+                          {isReconciled ? '✓ Reconciled to the Cent ($0.00 Difference)' : `⚠ Discrepancy: ${curr}${balanceDiscrepancy.toFixed(2)}`}
                         </span>
                       </h3>
                       <p style={{ fontSize: '12px', color: 'var(--text-dim)', margin: '2px 0 0 0' }}>
@@ -1543,7 +1661,7 @@ export default function App() {
                     >
                       <option value="CHECKING">Checking Account (BANKMSGSRSV1)</option>
                       <option value="SAVINGS">Savings Account (BANKMSGSRSV1)</option>
-                      <option value="CREDITCARD">Credit Card (CREDITCARDMSGSRSV1)</option>
+                      <option value="CREDITLINE">Credit Card (CREDITCARDMSGSRSV1)</option>
                     </select>
                   </div>
 
@@ -1578,19 +1696,23 @@ export default function App() {
                   {/* Intuit Bank ID */}
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', fontWeight: '700', marginBottom: '4px', textTransform: 'uppercase' }}>
-                      Intuit Bank ID (&lt;INTU.BID&gt;)
+                      Intuit Bank ID (&lt;INTU.BID&gt; &amp; &lt;FI&gt;)
                     </label>
                     <select 
                       value={exportSettings.intuBid} 
-                      onChange={e => setExportSettings(s => ({ ...s, intuBid: e.target.value }))}
+                      onChange={e => {
+                        const selected = BANK_INTU_PRESETS.find(p => p.bid === e.target.value);
+                        setExportSettings(s => ({
+                          ...s,
+                          intuBid: e.target.value,
+                          bankId: selected ? selected.bid : s.bankId
+                        }));
+                      }}
                       style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
                     >
-                      <option value="3000">3000 - Universal Compatibility (Recommended)</option>
-                      <option value="10898">10898 - JPMorgan Chase</option>
-                      <option value="3000">3000 - Bank of America / Wells Fargo</option>
-                      <option value="24001">24001 - Citibank</option>
-                      <option value="1001">1001 - American Express</option>
-                      <option value="4000">4000 - Capital One</option>
+                      {BANK_INTU_PRESETS.map(p => (
+                        <option key={p.bid} value={p.bid}>{p.label}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -1942,42 +2064,57 @@ export default function App() {
               {/* Format Switcher & Actions Toolbar */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+                  {/* Format Selector Pills */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
                     {[
-                      { id: 'qbo', label: 'QuickBooks (.QBO)', badge: 'Recommended' },
-                      { id: 'xlsx', label: 'Excel (.XLSX)' },
-                      { id: 'csv', label: 'CSV (.CSV)' },
+                      { id: 'qbo', label: 'QuickBooks (.QBO)', badge: 'OFX 1.02' },
+                      { id: 'qfx', label: 'Quicken (.QFX)', badge: 'Web Connect' },
+                      { id: 'ofx', label: 'OFX (.OFX)', badge: 'Xero/Sage' },
+                      { id: 'xlsx', label: 'Excel (.XLSX)', badge: 'CPA Audit' },
+                      { id: 'csv_3col', label: 'QBO CSV (3-Col)' },
+                      { id: 'csv_4col', label: 'QBO CSV (4-Col)' },
+                      { id: 'hashavshevet_xlsx', label: 'חשבשבת Excel' },
+                      { id: 'hashavshevet_csv', label: 'חשבשבת CSV' },
+                      { id: 'hashavshevet_dat', label: 'חשבשבת (.DAT)' },
                     ].map(fmt => (
                       <button
                         key={fmt.id}
                         onClick={() => setSelectedFormat(fmt.id)}
                         style={{
-                          padding: '8px 14px',
+                          padding: '6px 12px',
                           borderRadius: '8px',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: '13px',
+                          fontSize: '12px',
                           fontWeight: '600',
                           transition: 'all 0.2s',
                           background: selectedFormat === fmt.id ? 'var(--accent-cyan)' : 'transparent',
-                          color: selectedFormat === fmt.id ? '#0f172a' : 'var(--text-muted)'
+                          color: selectedFormat === fmt.id ? '#0f172a' : 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
                         }}
                       >
-                        {fmt.label} {fmt.badge && <span style={{ fontSize: '10px', padding: '2px 6px', background: selectedFormat === fmt.id ? '#0f172a' : 'rgba(56, 189, 248, 0.2)', color: selectedFormat === fmt.id ? '#fff' : 'var(--accent-cyan)', borderRadius: '4px', marginLeft: '4px' }}>{fmt.badge}</span>}
+                        {fmt.label}
+                        {fmt.badge && (
+                          <span style={{ fontSize: '9px', padding: '1px 5px', background: selectedFormat === fmt.id ? '#0f172a' : 'rgba(56, 189, 248, 0.2)', color: selectedFormat === fmt.id ? '#fff' : 'var(--accent-cyan)', borderRadius: '4px' }}>
+                            {fmt.badge}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
 
-                  {/* AI Payee Cleanup Button */}
+                  {/* Side-by-Side Review Toggle */}
                   <button
-                    onClick={handleAiPayeeCleanup}
+                    onClick={() => setIsSideBySide(prev => !prev)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: aiCleanedSuccess ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.12)',
-                      border: aiCleanedSuccess ? '1px solid #10b981' : '1px solid rgba(56, 189, 248, 0.4)',
-                      color: aiCleanedSuccess ? '#34d399' : 'var(--accent-cyan)',
+                      background: isSideBySide ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                      border: isSideBySide ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      color: isSideBySide ? 'var(--accent-cyan)' : '#fff',
                       padding: '8px 14px',
                       borderRadius: '8px',
                       fontSize: '13px',
@@ -1985,10 +2122,55 @@ export default function App() {
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
-                    title="Clean noisy bank descriptions into clean 32-character payees and store full details in memo"
+                    title="Toggle side-by-side original statement PDF viewer alongside interactive table"
+                  >
+                    <FileText size={14} />
+                    {isSideBySide ? '✓ Side-by-Side Mode' : '📑 Side-by-Side Review'}
+                  </button>
+
+                  {/* Clean Payees Toggle Button */}
+                  <button
+                    onClick={handleToggleCleanPayees}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: cleanPayeesActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.12)',
+                      border: cleanPayeesActive ? '1px solid #10b981' : '1px solid rgba(56, 189, 248, 0.4)',
+                      color: cleanPayeesActive ? '#34d399' : 'var(--accent-cyan)',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    title="Toggle between clean vendor names into <NAME> (32 chars) and raw bank descriptions"
                   >
                     <Sparkles size={14} />
-                    {aiCleanedSuccess ? '✓ Payees Cleaned & Truncated!' : '✨ AI Payee Cleanup'}
+                    {cleanPayeesActive ? '✓ Clean Payees Active' : '✨ Clean Payee Names'}
+                  </button>
+
+                  {/* Invert All Signs (+/-) Button */}
+                  <button
+                    onClick={handleInvertAllSigns}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border-subtle)',
+                      color: '#fff',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    title="Flip signs of all transactions (essential for credit card statements where charges are printed positive)"
+                  >
+                    <RefreshCw size={14} /> Flip Signs (+/-)
                   </button>
 
                   {/* Add Row Button */}
@@ -2031,145 +2213,308 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Interactive Editable Data Table */}
-              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.25)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', width: '110px' }}>Date</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', minWidth: '220px' }}>Payee (&lt;NAME&gt;, max 32)</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', minWidth: '180px' }}>Memo / Details (&lt;MEMO&gt;)</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', width: '160px' }}>QuickBooks Category</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '110px' }}>Debit (-)</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '110px' }}>Credit (+)</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '100px' }}>Balance</th>
-                      <th style={{ padding: '12px 14px', fontWeight: '600', width: '40px', textAlign: 'center' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTransactions.map((t) => {
-                      const desc = t.description || '';
-                      const memo = t.memo || '';
-                      const isHebrew = /[\u0590-\u05FF]/.test(desc);
-                      const cat = categorizeTransaction(desc, t.amount);
-                      const isOverLimit = desc.length > 32;
+              {/* Multi-Account PDF Tabs if Multiple Accounts are Detected */}
+              {(() => {
+                const accts = Array.from(new Set(allCurrentTransactions.map(t => t.account_id || t.account_name).filter(Boolean)));
+                if (accts.length > 1) {
+                  return (
+                    <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-cyan)' }}>
+                        Multi-Account Statement Detected:
+                      </span>
+                      <button
+                        onClick={() => setSelectedAccountFilter('all')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          background: selectedAccountFilter === 'all' ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
+                          color: selectedAccountFilter === 'all' ? '#0f172a' : 'var(--text-muted)'
+                        }}
+                      >
+                        All Accounts ({allCurrentTransactions.length})
+                      </button>
+                      {accts.map(acct => (
+                        <button
+                          key={acct}
+                          onClick={() => setSelectedAccountFilter(acct)}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            background: selectedAccountFilter === acct ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
+                            color: selectedAccountFilter === acct ? '#0f172a' : 'var(--text-muted)'
+                          }}
+                        >
+                          Account #{acct} ({allCurrentTransactions.filter(t => (t.account_id || t.account_name) === acct).length})
+                        </button>
+                      ))}
+                      <span style={{ fontSize: '11px', color: 'var(--text-dim)', marginLeft: 'auto' }}>
+                        QuickBooks allows one account per .qbo file. Filter before downloading.
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
-                      return (
-                        <tr key={t.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: 'transparent' }}>
-                          {/* Date Input */}
-                          <td style={{ padding: '8px 10px' }}>
-                            <input 
-                              type="text"
-                              value={t.date}
-                              onChange={e => handleCellChange(t.id, 'date', e.target.value)}
-                              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 8px', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }}
-                              onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
-                              onBlur={e => e.target.style.borderColor = 'transparent'}
-                            />
-                          </td>
+              {/* Side-by-Side Review Grid or Full Width Table */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isSideBySide ? 'minmax(320px, 42%) minmax(500px, 58%)' : '1fr',
+                gap: '20px',
+                alignItems: 'start'
+              }}>
+                {/* Embedded PDF Viewer Panel (Side-by-Side Mode) */}
+                {isSideBySide && (
+                  <div style={{
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    position: 'sticky',
+                    top: '80px',
+                    height: 'calc(100vh - 120px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.4)'
+                  }}>
+                    <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <FileText size={15} color="var(--accent-cyan)" /> Original Bank PDF Statement
+                      </span>
+                      <button
+                        onClick={() => setIsSideBySide(false)}
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '2px' }}
+                        title="Close PDF Split Pane"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
 
-                          {/* Payee / <NAME> Input with 32-char indicator */}
-                          <td style={{ padding: '8px 10px' }}>
-                            <div style={{ position: 'relative' }}>
+                    <div style={{ flex: 1, background: '#0b1120', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {uploadedPdfBlobUrl ? (
+                        <iframe
+                          src={uploadedPdfBlobUrl}
+                          title="Original Statement PDF"
+                          style={{ width: '100%', height: '100%', border: 'none' }}
+                        />
+                      ) : (
+                        <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                          <FileText size={42} color="var(--accent-cyan)" style={{ marginBottom: '12px' }} />
+                          <h4 style={{ color: '#fff', fontSize: '15px', marginBottom: '8px' }}>Demo Sample Active</h4>
+                          <p style={{ fontSize: '13px', lineHeight: 1.5, maxWidth: '280px', margin: '0 auto' }}>
+                            Upload your live PDF bank statement on the homepage to inspect each page side-by-side with extracted rows.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Interactive Editable Data Table */}
+                <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.25)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', width: '105px' }}>Date</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', minWidth: '180px' }}>Clean Payee (&lt;NAME&gt; ≤32)</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', minWidth: '160px' }}>Full Memo (&lt;MEMO&gt; ≤255)</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', width: '95px' }}>Type</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', width: '90px' }}>Check #</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', width: '140px' }}>QuickBooks Category</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '100px' }}>Debit (-)</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '100px' }}>Credit (+)</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', textAlign: 'right', width: '100px' }}>Balance</th>
+                        <th style={{ padding: '12px 14px', fontWeight: '600', width: '40px', textAlign: 'center' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTransactions.map((t) => {
+                        const desc = t.description || '';
+                        const memo = t.memo || '';
+                        const isHebrew = /[\u0590-\u05FF]/.test(desc);
+                        const cat = categorizeTransaction(desc, t.amount);
+                        const isOverLimit = desc.length > 32;
+                        const hasDiscrepancy = Boolean(t.transition_error);
+
+                        return (
+                          <tr 
+                            key={t.id} 
+                            style={{ 
+                              borderBottom: '1px solid rgba(255,255,255,0.04)', 
+                              background: hasDiscrepancy ? 'rgba(239, 68, 68, 0.12)' : 'transparent',
+                              transition: 'background 0.2s'
+                            }}
+                          >
+                            {/* Date Input */}
+                            <td style={{ padding: '8px 10px' }}>
+                              <input 
+                                type="text"
+                                value={t.date}
+                                onChange={e => handleCellChange(t.id, 'date', e.target.value)}
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 8px', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }}
+                                onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
+                                onBlur={e => e.target.style.borderColor = 'transparent'}
+                              />
+                            </td>
+
+                            {/* Payee / <NAME> Input with 32-char indicator */}
+                            <td style={{ padding: '8px 10px' }}>
+                              <div style={{ position: 'relative' }}>
+                                <input 
+                                  type="text"
+                                  dir={isHebrew ? 'rtl' : 'ltr'}
+                                  value={desc}
+                                  onChange={e => handleCellChange(t.id, 'description', e.target.value)}
+                                  style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: isOverLimit ? '1px solid #f87171' : '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 36px 6px 8px', fontSize: '13px', outline: 'none' }}
+                                  onFocus={e => e.target.style.borderColor = isOverLimit ? '#f87171' : 'var(--accent-cyan)'}
+                                  onBlur={e => e.target.style.borderColor = isOverLimit ? '#f87171' : 'transparent'}
+                                />
+                                <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: isOverLimit ? '#f87171' : 'var(--text-dim)', pointerEvents: 'none', fontWeight: '600' }}>
+                                  {desc.length}/32
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Memo / <MEMO> Input */}
+                            <td style={{ padding: '8px 10px' }}>
                               <input 
                                 type="text"
                                 dir={isHebrew ? 'rtl' : 'ltr'}
-                                value={desc}
-                                onChange={e => handleCellChange(t.id, 'description', e.target.value)}
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: isOverLimit ? '1px solid #f87171' : '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 36px 6px 8px', fontSize: '13px', outline: 'none' }}
-                                onFocus={e => e.target.style.borderColor = isOverLimit ? '#f87171' : 'var(--accent-cyan)'}
-                                onBlur={e => e.target.style.borderColor = isOverLimit ? '#f87171' : 'transparent'}
+                                value={memo}
+                                onChange={e => handleCellChange(t.id, 'memo', e.target.value)}
+                                placeholder="Optional transaction memo"
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--text-muted)', padding: '6px 8px', fontSize: '12px', outline: 'none' }}
+                                onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
+                                onBlur={e => e.target.style.borderColor = 'transparent'}
                               />
-                              <span style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: isOverLimit ? '#f87171' : 'var(--text-dim)', pointerEvents: 'none', fontWeight: '600' }}>
-                                {desc.length}/32
+                            </td>
+
+                            {/* Type / <TRNTYPE> Context-Aware Selector */}
+                            <td style={{ padding: '8px 10px' }}>
+                              <select
+                                value={t.type || (t.amount >= 0 ? 'CREDIT' : 'DEBIT')}
+                                onChange={e => handleCellChange(t.id, 'type', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  background: 'rgba(255,255,255,0.04)',
+                                  border: '1px solid var(--border-subtle)',
+                                  borderRadius: '6px',
+                                  color: '#fff',
+                                  padding: '4px 6px',
+                                  fontSize: '11px',
+                                  fontWeight: '700',
+                                  outline: 'none'
+                                }}
+                              >
+                                <option value="DEBIT">DEBIT</option>
+                                <option value="CREDIT">CREDIT</option>
+                                <option value="FEE">FEE</option>
+                                <option value="CHECK">CHECK</option>
+                                <option value="XFER">XFER</option>
+                                <option value="ATM">ATM</option>
+                                <option value="POS">POS</option>
+                                <option value="INT">INT</option>
+                                <option value="PAYMENT">PAYMENT</option>
+                              </select>
+                            </td>
+
+                            {/* Check # Column */}
+                            <td style={{ padding: '8px 10px' }}>
+                              <input 
+                                type="text"
+                                placeholder="—"
+                                value={t.check_num || ''}
+                                onChange={e => handleCellChange(t.id, 'check_num', e.target.value)}
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: '#fff', padding: '6px 8px', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }}
+                                onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
+                                onBlur={e => e.target.style.borderColor = 'transparent'}
+                              />
+                            </td>
+
+                            {/* QuickBooks Category */}
+                            <td style={{ padding: '8px 10px' }}>
+                              <span style={{
+                                fontSize: '11px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: `${cat.color}15`,
+                                color: cat.color,
+                                border: `1px solid ${cat.color}35`,
+                                fontWeight: '600',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                <span>{cat.icon}</span>
+                                <span>{cat.name}</span>
                               </span>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Memo / <MEMO> Input */}
-                          <td style={{ padding: '8px 10px' }}>
-                            <input 
-                              type="text"
-                              dir={isHebrew ? 'rtl' : 'ltr'}
-                              value={memo}
-                              onChange={e => handleCellChange(t.id, 'memo', e.target.value)}
-                              placeholder="Optional transaction memo"
-                              style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--text-muted)', padding: '6px 8px', fontSize: '12px', outline: 'none' }}
-                              onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
-                              onBlur={e => e.target.style.borderColor = 'transparent'}
-                            />
-                          </td>
+                            {/* Debit (-) Input */}
+                            <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                              <input 
+                                type="number"
+                                step="0.01"
+                                placeholder="—"
+                                value={t.amount < 0 ? Math.abs(t.amount).toFixed(2) : ''}
+                                onChange={e => handleCellChange(t.id, 'debit', e.target.value)}
+                                style={{ width: '90px', textAlign: 'right', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--accent-rose)', padding: '6px 8px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace', outline: 'none' }}
+                                onFocus={e => e.target.style.borderColor = 'var(--accent-rose)'}
+                                onBlur={e => e.target.style.borderColor = 'transparent'}
+                              />
+                            </td>
 
-                          {/* QuickBooks Category */}
-                          <td style={{ padding: '8px 10px' }}>
-                            <span style={{
-                              fontSize: '11px',
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              background: `${cat.color}15`,
-                              color: cat.color,
-                              border: `1px solid ${cat.color}35`,
-                              fontWeight: '600',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              <span>{cat.icon}</span>
-                              <span>{cat.name}</span>
-                            </span>
-                          </td>
+                            {/* Credit (+) Input */}
+                            <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                              <input 
+                                type="number"
+                                step="0.01"
+                                placeholder="—"
+                                value={t.amount > 0 ? Math.abs(t.amount).toFixed(2) : ''}
+                                onChange={e => handleCellChange(t.id, 'credit', e.target.value)}
+                                style={{ width: '90px', textAlign: 'right', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--accent-emerald)', padding: '6px 8px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace', outline: 'none' }}
+                                onFocus={e => e.target.style.borderColor = 'var(--accent-emerald)'}
+                                onBlur={e => e.target.style.borderColor = 'transparent'}
+                              />
+                            </td>
 
-                          {/* Debit (-) Input */}
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                            <input 
-                              type="number"
-                              step="0.01"
-                              placeholder="—"
-                              value={t.amount < 0 ? Math.abs(t.amount).toFixed(2) : ''}
-                              onChange={e => handleCellChange(t.id, 'debit', e.target.value)}
-                              style={{ width: '90px', textAlign: 'right', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--accent-rose)', padding: '6px 8px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace', outline: 'none' }}
-                              onFocus={e => e.target.style.borderColor = 'var(--accent-rose)'}
-                              onBlur={e => e.target.style.borderColor = 'transparent'}
-                            />
-                          </td>
+                            {/* Balance Display with Discrepancy Flag */}
+                            <td style={{ padding: '8px 14px', textAlign: 'right', color: hasDiscrepancy ? '#f87171' : 'var(--text-dim)', fontFamily: 'monospace' }}>
+                              <div>{t.balance !== null && t.balance !== undefined ? `${curr}${Number(t.balance).toFixed(2)}` : '—'}</div>
+                              {hasDiscrepancy && (
+                                <div style={{ fontSize: '10px', color: '#f87171', fontWeight: '700' }} title={`Expected balance: ${t.expected_balance}`}>
+                                  ⚠ Discrepancy
+                                </div>
+                              )}
+                            </td>
 
-                          {/* Credit (+) Input */}
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                            <input 
-                              type="number"
-                              step="0.01"
-                              placeholder="—"
-                              value={t.amount > 0 ? Math.abs(t.amount).toFixed(2) : ''}
-                              onChange={e => handleCellChange(t.id, 'credit', e.target.value)}
-                              style={{ width: '90px', textAlign: 'right', background: 'rgba(255,255,255,0.03)', border: '1px solid transparent', borderRadius: '6px', color: 'var(--accent-emerald)', padding: '6px 8px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace', outline: 'none' }}
-                              onFocus={e => e.target.style.borderColor = 'var(--accent-emerald)'}
-                              onBlur={e => e.target.style.borderColor = 'transparent'}
-                            />
-                          </td>
-
-                          {/* Balance Display */}
-                          <td style={{ padding: '8px 14px', textAlign: 'right', color: 'var(--text-dim)', fontFamily: 'monospace' }}>
-                            {t.balance !== null && t.balance !== undefined ? `${curr}${Number(t.balance).toFixed(2)}` : '—'}
-                          </td>
-
-                          {/* Delete Action */}
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                            <button
-                              onClick={() => handleDeleteTransaction(t.id)}
-                              style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-dim)'}
-                              title="Delete Transaction"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            {/* Delete Action */}
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => handleDeleteTransaction(t.id)}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-dim)'}
+                                title="Delete Transaction"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Bottom call to action */}

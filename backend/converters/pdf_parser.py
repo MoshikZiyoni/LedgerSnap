@@ -7,7 +7,14 @@ import base64
 import requests
 from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
-
+try:
+    from backend.converters.qbo_generator import normalize_rtl_text
+except ImportError:
+    try:
+        from converters.qbo_generator import normalize_rtl_text
+    except ImportError:
+        def normalize_rtl_text(t: str) -> str:
+            return t
 # Regex patterns for common dates
 DATE_PATTERNS = [
     r'(\d{1,2}/\d{1,2}/\d{4})',
@@ -428,6 +435,70 @@ Output ONLY valid raw JSON with no markdown wrapping or code blocks."""
 
     return None
 
+def validate_balance_transitions(
+    transactions: List[Dict[str, Any]], 
+    opening_balance: Optional[float] = None, 
+    doc_date_format: str = "DD/MM/YYYY"
+) -> Tuple[List[Dict[str, Any]], bool, List[int]]:
+    """
+    Validates row-by-row running balance transitions and overall statement reconciliation.
+    Detects chronological direction (descending or ascending) and checks:
+    - If descending (newest first): curr_row['balance'] - curr_row['amount'] == next_row['balance']
+    - If ascending (oldest first): curr_row['balance'] + next_row['amount'] == next_row['balance']
+    Returns (validated_transactions, is_reconciled, discrepant_row_indices)
+    """
+    discrepant_rows = []
+    has_balances = [t for t in transactions if t.get("balance") is not None]
+    is_descending = True
+    if len(has_balances) >= 2:
+        try:
+            d0_str = transactions[0].get("date", "")
+            d1_str = transactions[-1].get("date", "")
+            if d0_str and d1_str:
+                d0_iso = parse_date(d0_str, doc_date_format)
+                d1_iso = parse_date(d1_str, doc_date_format)
+                is_descending = (d0_iso >= d1_iso)
+        except Exception:
+            pass
+
+        for i in range(len(transactions) - 1):
+            curr_row = transactions[i]
+            next_row = transactions[i + 1]
+            if curr_row.get("balance") is not None and next_row.get("balance") is not None:
+                if is_descending:
+                    expected_next = round(curr_row["balance"] - curr_row["amount"], 2)
+                    diff = round(abs(expected_next - next_row["balance"]), 2)
+                    if diff >= 0.01:
+                        curr_row["transition_error"] = True
+                        curr_row["expected_balance"] = expected_next
+                        curr_row["diff"] = diff
+                        discrepant_rows.append(i)
+                else:
+                    expected_next = round(curr_row["balance"] + next_row["amount"], 2)
+                    diff = round(abs(expected_next - next_row["balance"]), 2)
+                    if diff >= 0.01:
+                        next_row["transition_error"] = True
+                        next_row["expected_balance"] = expected_next
+                        next_row["diff"] = diff
+                        discrepant_rows.append(i + 1)
+
+    total_credits = sum(t["amount"] for t in transactions if t.get("amount", 0) > 0)
+    total_debits = sum(abs(t["amount"]) for t in transactions if t.get("amount", 0) < 0)
+    net_change = total_credits - total_debits
+
+    balances = [t["balance"] for t in transactions if t.get("balance") is not None]
+    if is_descending:
+        latest_balance = balances[0] if balances else None
+    else:
+        latest_balance = balances[-1] if balances else None
+
+    calculated_ending = round((opening_balance or 0.0) + total_credits - total_debits, 2) if opening_balance is not None else round(net_change, 2)
+    target_ending = latest_balance if latest_balance is not None else calculated_ending
+    balance_discrepancy = round(abs(calculated_ending - target_ending), 2)
+    is_reconciled = (balance_discrepancy < 0.01) and (len(discrepant_rows) == 0)
+
+    return transactions, is_reconciled, discrepant_rows
+
 def extract_transactions_from_pdf(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]], str, Dict[str, Any]]:
     """
     Parses a bank statement PDF and extracts structured transactions.
@@ -521,10 +592,11 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]
 
                         norm_date = normalize_date_string(date_match, doc_date_format)
 
-                        # Extract Description & fix visual Hebrew & clean glued currency suffixes
+                        # Extract Description & fix visual Hebrew & clean glued currency suffixes & normalize RTL parentheses
                         raw_desc = str(row[desc_col] or '').strip().replace('\n', ' ') if desc_col != -1 and desc_col < len(row) else "Bank Transaction"
                         desc_val = reverse_visual_hebrew(raw_desc)
                         desc_val = clean_currency_glued_suffixes(desc_val)
+                        desc_val = normalize_rtl_text(desc_val)
 
                         # Extract Amounts
                         amount = 0.0
@@ -582,6 +654,7 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]
                                 desc_part = desc_part.replace(a, "")
                             desc_part = reverse_visual_hebrew(desc_part.strip())
                             desc_part = clean_currency_glued_suffixes(desc_part)
+                            desc_part = normalize_rtl_text(desc_part)
 
                             transactions.append({
                                 "date": norm_date,
@@ -601,12 +674,35 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]
     total_debits = sum(abs(t["amount"]) for t in transactions if t["amount"] < 0)
     net_change = sum(t["amount"] for t in transactions)
 
-    # Determine Ending Balance & Opening Balance
+    # Determine Ending Balance & Opening Balance from transactions
     latest_balance = next((t["balance"] for t in transactions if t["balance"] is not None), None)
     oldest_txn = next((t for t in reversed(transactions) if t["balance"] is not None), None)
     opening_balance = None
     if oldest_txn and oldest_txn["balance"] is not None:
         opening_balance = round(oldest_txn["balance"] - oldest_txn["amount"], 2)
+
+    # Search for explicit Opening / Closing balances printed in the document header/footer
+    open_match = re.search(r'(?:יתרת\s*פתיחה|יתרה\s*קודמת|Opening\s*Balance|Beginning\s*Balance|Starting\s*Balance|Previous\s*Balance)[\s:]*([\$₪€£]?\s*[\-]?[0-9]{1,3}(?:,[0-9]{3})*\.[0-9]{2})', all_doc_text, re.IGNORECASE)
+    if open_match:
+        parsed_open = clean_amount(open_match.group(1))
+        if parsed_open != 0.0:
+            opening_balance = round(parsed_open, 2)
+
+    close_match = re.search(r'(?:יתרת\s*סגירה|יתרה\s*(?:לסוף|בסוף|לתום)\s*תקופה|Ending\s*Balance|Closing\s*Balance|New\s*Balance)[\s:]*([\$₪€£]?\s*[\-]?[0-9]{1,3}(?:,[0-9]{3})*\.[0-9]{2})', all_doc_text, re.IGNORECASE)
+    if close_match:
+        parsed_close = clean_amount(close_match.group(1))
+        if parsed_close != 0.0:
+            latest_balance = round(parsed_close, 2)
+
+    # Row-by-row balance transition validation and reconciliation
+    transactions, is_reconciled, discrepant_rows = validate_balance_transitions(
+        transactions, 
+        opening_balance=opening_balance, 
+        doc_date_format=doc_date_format
+    )
+    calculated_ending = round((opening_balance or 0.0) + total_credits - total_debits, 2) if opening_balance is not None else round(net_change, 2)
+    target_ending = latest_balance if latest_balance is not None else calculated_ending
+    balance_discrepancy = round(abs(calculated_ending - target_ending), 2)
 
     # Date range
     dates = [t["date"] for t in transactions if t.get("date")]
@@ -621,10 +717,8 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]
         parts = t["date"].split("/") if "/" in t["date"] else t["date"].split("-")
         if len(parts) == 3:
             if doc_date_format == "DD/MM/YYYY":
-                # parts[1] is month, parts[2] is year
                 m_key = f"{parts[1]}/{parts[2]}"
             else:
-                # parts[0] is month, parts[2] is year
                 m_key = f"{parts[0]}/{parts[2]}"
         else:
             m_key = "General"
@@ -659,6 +753,12 @@ def extract_transactions_from_pdf(pdf_bytes: bytes) -> Tuple[List[Dict[str, Any]
         "net_change": round(net_change, 2),
         "ending_balance": round(latest_balance, 2) if latest_balance is not None else None,
         "opening_balance": opening_balance,
+        "calculated_ending_balance": calculated_ending,
+        "target_ending_balance": target_ending,
+        "balance_discrepancy": balance_discrepancy,
+        "is_reconciled": is_reconciled,
+        "discrepant_rows_count": len(discrepant_rows),
+        "discrepant_row_indices": discrepant_rows,
         "start_date": start_date,
         "end_date": end_date,
         "date_range": date_range,

@@ -28,8 +28,11 @@ except ImportError:
 
 try:
     from backend.converters.pdf_parser import extract_transactions_from_pdf
-    from backend.converters.qbo_generator import generate_qbo
-    from backend.converters.excel_generator import generate_excel
+    from backend.converters.qbo_generator import generate_qbo, generate_ofx, generate_qfx, validate_qbo_string
+    from backend.converters.excel_generator import (
+        generate_excel, generate_qbo_csv_3col, generate_qbo_csv_4col,
+        generate_hashavshevet_excel, generate_hashavshevet_csv, generate_hashavshevet_dat
+    )
     from backend.database import (
         create_license, verify_license, verify_by_email, 
         find_license_by_email_or_key,
@@ -40,8 +43,11 @@ try:
     )
 except ImportError:
     from converters.pdf_parser import extract_transactions_from_pdf
-    from converters.qbo_generator import generate_qbo
-    from converters.excel_generator import generate_excel
+    from converters.qbo_generator import generate_qbo, generate_ofx, generate_qfx, validate_qbo_string
+    from converters.excel_generator import (
+        generate_excel, generate_qbo_csv_3col, generate_qbo_csv_4col,
+        generate_hashavshevet_excel, generate_hashavshevet_csv, generate_hashavshevet_dat
+    )
     from database import (
         create_license, verify_license, verify_by_email, 
         find_license_by_email_or_key,
@@ -681,7 +687,10 @@ async def convert_pdf(
 def download_converted(
     request: Request,
     file_id: str, 
-    format: str = Query("qbo", enum=["qbo", "xlsx", "csv"]),
+    format: str = Query("qbo", enum=[
+        "qbo", "qfx", "ofx", "xlsx", "csv", "csv_3col", "csv_4col",
+        "hashavshevet_xlsx", "hashavshevet_csv", "hashavshevet_dat"
+    ]),
     client_id: Optional[str] = Query(None),
     license_key: Optional[str] = Query(None),
     currency: Optional[str] = Query(None),
@@ -692,7 +701,7 @@ def download_converted(
     intu_bid: Optional[str] = Query("3000"),
     date_format: Optional[str] = Query("auto")
 ):
-    """Downloads parsed transactions in QBO, Excel (.xlsx), or CSV format, strictly tracked by IP and License."""
+    """Downloads parsed transactions in QBO, QFX, OFX, Excel (.xlsx), CSV presets, or Hashavshevet format."""
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
     
@@ -731,7 +740,6 @@ def download_converted(
             raise HTTPException(status_code=404, detail="File session expired or not found. Please re-upload.")
 
     if not is_authorized and file_id != "demo-sample-chase-statement":
-        # Check ownership and ensure client didn't bypass
         allowed, used = get_free_usage_status(cid, real_ip)
         file_cid = record.get("client_id")
         file_ip = record.get("ip")
@@ -746,7 +754,6 @@ def download_converted(
     summary = record.get("summary", {})
     raw_base = os.path.splitext(record.get("filename", "statement"))[0]
 
-    # Resolve settings (user query overrides detected summary)
     eff_currency = (currency or summary.get("currency") or "USD").upper().strip()
     eff_acct_id = account_id or summary.get("account_id") or "123456789"
     eff_bank_id = bank_id or summary.get("bank_id") or "123456789"
@@ -755,11 +762,22 @@ def download_converted(
     eff_intu_bid = intu_bid or "3000"
     eff_date_format = date_format or summary.get("detected_date_format") or "auto"
     
-    # RFC 5987 safe header encoding for non-ASCII / Hebrew filenames
     import urllib.parse
+    ext = "qbo"
+    if format in ["xlsx", "hashavshevet_xlsx"]:
+        ext = "xlsx"
+    elif format in ["csv", "csv_3col", "csv_4col", "hashavshevet_csv"]:
+        ext = "csv"
+    elif format == "ofx":
+        ext = "ofx"
+    elif format == "qfx":
+        ext = "qfx"
+    elif format == "hashavshevet_dat":
+        ext = "dat"
+
     safe_ascii = "bank_statement"
-    encoded_name = urllib.parse.quote(f"{raw_base}.{format}")
-    disp_header = f'attachment; filename="{safe_ascii}.{format}"; filename*=UTF-8\'\'{encoded_name}'
+    encoded_name = urllib.parse.quote(f"{raw_base}.{ext}")
+    disp_header = f'attachment; filename="{safe_ascii}.{ext}"; filename*=UTF-8\'\'{encoded_name}'
 
     if format == "qbo":
         qbo_content = generate_qbo(
@@ -775,34 +793,105 @@ def download_converted(
             ending_balance=summary.get("ending_balance"),
             opening_balance=summary.get("opening_balance")
         )
+        # Round-trip validation check
+        validate_qbo_string(qbo_content, expected_count=len(transactions))
         return Response(
             content=qbo_content.encode('utf-8', errors='replace'), 
             media_type="application/x-ofx", 
             headers={"Content-Disposition": disp_header}
         )
 
+    elif format == "qfx":
+        qfx_content = generate_qfx(
+            transactions,
+            bank_name=bank_name,
+            account_id=eff_acct_id,
+            bank_id=eff_bank_id,
+            currency=eff_currency,
+            account_type=eff_acct_type,
+            export_mode=eff_export_mode,
+            intu_bid=eff_intu_bid,
+            date_format=eff_date_format,
+            ending_balance=summary.get("ending_balance"),
+            opening_balance=summary.get("opening_balance")
+        )
+        return Response(
+            content=qfx_content.encode('utf-8', errors='replace'), 
+            media_type="application/vnd.intu.qfx", 
+            headers={"Content-Disposition": disp_header}
+        )
+
+    elif format == "ofx":
+        ofx_content = generate_ofx(
+            transactions,
+            bank_name=bank_name,
+            account_id=eff_acct_id,
+            bank_id=eff_bank_id,
+            currency=eff_currency,
+            account_type=eff_acct_type,
+            export_mode=eff_export_mode,
+            date_format=eff_date_format,
+            ending_balance=summary.get("ending_balance"),
+            opening_balance=summary.get("opening_balance")
+        )
+        return Response(
+            content=ofx_content.encode('utf-8', errors='replace'), 
+            media_type="application/x-ofx", 
+            headers={"Content-Disposition": disp_header}
+        )
+
     elif format == "xlsx":
-        xlsx_bytes = generate_excel(transactions, bank_name=bank_name)
+        xlsx_bytes = generate_excel(transactions, bank_name=bank_name, summary=summary, currency=eff_currency)
         return Response(
             content=xlsx_bytes, 
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
             headers={"Content-Disposition": disp_header}
         )
 
-    elif format == "csv":
-        df = pd.DataFrame(transactions)
-        csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False)
+    elif format in ["csv", "csv_3col"]:
+        csv_text = generate_qbo_csv_3col(transactions, date_format=eff_date_format)
         return Response(
-            content=csv_buffer.getvalue().encode('utf-8-sig', errors='replace'), 
+            content=csv_text.encode('utf-8-sig', errors='replace'), 
             media_type="text/csv", 
+            headers={"Content-Disposition": disp_header}
+        )
+
+    elif format == "csv_4col":
+        csv_text = generate_qbo_csv_4col(transactions, date_format=eff_date_format)
+        return Response(
+            content=csv_text.encode('utf-8-sig', errors='replace'), 
+            media_type="text/csv", 
+            headers={"Content-Disposition": disp_header}
+        )
+
+    elif format == "hashavshevet_xlsx":
+        xlsx_bytes = generate_hashavshevet_excel(transactions, bank_name=bank_name)
+        return Response(
+            content=xlsx_bytes, 
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            headers={"Content-Disposition": disp_header}
+        )
+
+    elif format == "hashavshevet_csv":
+        csv_bytes = generate_hashavshevet_csv(transactions, encoding="utf-8-sig")
+        return Response(
+            content=csv_bytes, 
+            media_type="text/csv", 
+            headers={"Content-Disposition": disp_header}
+        )
+
+    elif format == "hashavshevet_dat":
+        dat_bytes = generate_hashavshevet_dat(transactions)
+        return Response(
+            content=dat_bytes, 
+            media_type="application/octet-stream", 
             headers={"Content-Disposition": disp_header}
         )
 
 @app.post("/api/export")
 def export_customized(request: Request, payload: Dict[str, Any]):
     """
-    Exports user-edited transactions from the interactive review grid to QBO, XLSX, or CSV.
+    Exports user-edited transactions from the interactive review grid to QBO, OFX, XLSX, CSV, or Hashavshevet.
     """
     real_ip = get_client_ip(request)
     cid = payload.get("client_id") or real_ip or "anonymous-client"
@@ -838,11 +927,24 @@ def export_customized(request: Request, payload: Dict[str, Any]):
     date_format = payload.get("date_format", "auto")
     filename = payload.get("filename", "statement")
     raw_base = os.path.splitext(filename)[0]
+    summary = payload.get("summary") or {}
 
     import urllib.parse
+    ext = "qbo"
+    if fmt in ["xlsx", "hashavshevet_xlsx"]:
+        ext = "xlsx"
+    elif fmt in ["csv", "csv_3col", "csv_4col", "hashavshevet_csv"]:
+        ext = "csv"
+    elif fmt == "ofx":
+        ext = "ofx"
+    elif fmt == "qfx":
+        ext = "qfx"
+    elif fmt == "hashavshevet_dat":
+        ext = "dat"
+
     safe_ascii = "bank_statement"
-    encoded_name = urllib.parse.quote(f"{raw_base}.{fmt}")
-    disp_header = f'attachment; filename="{safe_ascii}.{fmt}"; filename*=UTF-8\'\'{encoded_name}'
+    encoded_name = urllib.parse.quote(f"{raw_base}.{ext}")
+    disp_header = f'attachment; filename="{safe_ascii}.{ext}"; filename*=UTF-8\'\'{encoded_name}'
 
     if fmt == "qbo":
         qbo_content = generate_qbo(
@@ -854,31 +956,106 @@ def export_customized(request: Request, payload: Dict[str, Any]):
             account_type=account_type,
             export_mode=export_mode,
             intu_bid=intu_bid,
-            date_format=date_format
+            date_format=date_format,
+            ending_balance=payload.get("ending_balance"),
+            opening_balance=payload.get("opening_balance")
         )
+        validate_qbo_string(qbo_content, expected_count=len(transactions))
         return Response(
             content=qbo_content.encode('utf-8', errors='replace'),
             media_type="application/x-ofx",
             headers={"Content-Disposition": disp_header}
         )
+    elif fmt == "qfx":
+        qfx_content = generate_qfx(
+            transactions,
+            bank_name=bank_name,
+            account_id=account_id,
+            bank_id=bank_id,
+            currency=currency,
+            account_type=account_type,
+            export_mode=export_mode,
+            intu_bid=intu_bid,
+            date_format=date_format,
+            ending_balance=payload.get("ending_balance"),
+            opening_balance=payload.get("opening_balance")
+        )
+        return Response(
+            content=qfx_content.encode('utf-8', errors='replace'),
+            media_type="application/vnd.intu.qfx",
+            headers={"Content-Disposition": disp_header}
+        )
+    elif fmt == "ofx":
+        ofx_content = generate_ofx(
+            transactions,
+            bank_name=bank_name,
+            account_id=account_id,
+            bank_id=bank_id,
+            currency=currency,
+            account_type=account_type,
+            export_mode=export_mode,
+            date_format=date_format,
+            ending_balance=payload.get("ending_balance"),
+            opening_balance=payload.get("opening_balance")
+        )
+        return Response(
+            content=ofx_content.encode('utf-8', errors='replace'),
+            media_type="application/x-ofx",
+            headers={"Content-Disposition": disp_header}
+        )
     elif fmt == "xlsx":
-        xlsx_bytes = generate_excel(transactions, bank_name=bank_name)
+        xlsx_bytes = generate_excel(transactions, bank_name=bank_name, summary=summary, currency=currency)
         return Response(
             content=xlsx_bytes,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": disp_header}
         )
-    elif fmt == "csv":
-        df = pd.DataFrame(transactions)
-        csv_buffer = io.StringIO()
-        df.to_csv(csv_buffer, index=False)
+    elif fmt in ["csv", "csv_3col"]:
+        csv_text = generate_qbo_csv_3col(transactions, date_format=date_format)
         return Response(
-            content=csv_buffer.getvalue().encode('utf-8-sig', errors='replace'),
+            content=csv_text.encode('utf-8-sig', errors='replace'),
             media_type="text/csv",
             headers={"Content-Disposition": disp_header}
         )
+    elif fmt == "csv_4col":
+        csv_text = generate_qbo_csv_4col(transactions, date_format=date_format)
+        return Response(
+            content=csv_text.encode('utf-8-sig', errors='replace'),
+            media_type="text/csv",
+            headers={"Content-Disposition": disp_header}
+        )
+    elif fmt == "hashavshevet_xlsx":
+        xlsx_bytes = generate_hashavshevet_excel(transactions, bank_name=bank_name)
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": disp_header}
+        )
+    elif fmt == "hashavshevet_csv":
+        csv_bytes = generate_hashavshevet_csv(transactions, encoding="utf-8-sig")
+        return Response(
+            content=csv_bytes,
+            media_type="text/csv",
+            headers={"Content-Disposition": disp_header}
+        )
+    elif fmt == "hashavshevet_dat":
+        dat_bytes = generate_hashavshevet_dat(transactions)
+        return Response(
+            content=dat_bytes,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": disp_header}
+        )
     else:
-        raise HTTPException(status_code=400, detail="Unsupported export format.")
+        raise HTTPException(status_code=400, detail=f"Unsupported export format '{fmt}'.")
+
+@app.post("/api/validate-qbo")
+def validate_qbo_endpoint(payload: Dict[str, Any]):
+    """Validates QBO text in memory for count, net change, FITID uniqueness, and 32-char limits."""
+    qbo_text = payload.get("qbo_text", "")
+    expected_count = payload.get("expected_count")
+    expected_net = payload.get("expected_net_change")
+    res = validate_qbo_string(qbo_text, expected_count=expected_count, expected_net_change=expected_net)
+    return res
 
 if __name__ == "__main__":
     import uvicorn

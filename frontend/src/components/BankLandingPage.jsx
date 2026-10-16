@@ -115,6 +115,29 @@ export default function BankLandingPage({
         </div>
       </div>
 
+      {/* Direct Feed Limitation Alert Notice */}
+      {bank.directFeedLimitNotice && (
+        <div style={{
+          background: 'rgba(234, 179, 8, 0.08)',
+          border: '1.5px solid rgba(234, 179, 8, 0.35)',
+          borderRadius: '14px',
+          padding: '14px 20px',
+          marginBottom: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          color: '#fef08a',
+          fontSize: '14px',
+          boxShadow: '0 4px 20px rgba(234, 179, 8, 0.08)'
+        }}>
+          <AlertCircle size={20} color="#eab308" style={{ flexShrink: 0 }} />
+          <div>
+            <strong style={{ color: '#fff' }}>⚡ Why You Need LedgerSnap for {bank.name}:</strong>{' '}
+            <span>{bank.directFeedLimitNotice}</span>
+          </div>
+        </div>
+      )}
+
       {/* Interactive Studio Dropzone embedded in the Hero */}
       <div className="glass-panel" style={{ padding: '32px', marginBottom: '64px', border: '1px solid rgba(56, 189, 248, 0.3)', boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7)' }}>
         <div 
@@ -324,6 +347,61 @@ export default function BankLandingPage({
           </div>
         </div>
       </section>
+
+      {/* How Bank Statements Map to QuickBooks .QBO Preview Table */}
+      {bank.mappingPreview && bank.mappingPreview.length > 0 && (
+        <section style={{ marginBottom: '64px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div 
+              className="glass-pill" 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '6px 16px', 
+                marginBottom: '12px', 
+                color: 'var(--accent-cyan)', 
+                fontSize: '12px', 
+                fontWeight: '700',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
+              }}
+            >
+              <Sparkles size={14} color="#38bdf8" />
+              Technical Specification &amp; Tag Mapping
+            </div>
+            <h2 style={{ fontSize: 'clamp(22px, 3.2vw, 30px)', fontWeight: '800', marginBottom: '10px' }}>
+              How {bank.name} Statements Map to QuickBooks .QBO
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '720px', margin: '0 auto', lineHeight: 1.6 }}>
+              Our pre-tuned parsing rules transform raw {bank.name} PDF statement columns into certified Intuit Web Connect SGML tags.
+            </p>
+          </div>
+
+          <div style={{ overflowX: 'auto', borderRadius: '16px', border: '1px solid var(--border-subtle)', background: 'rgba(15, 23, 42, 0.65)', boxShadow: '0 8px 32px rgba(0,0,0,0.35)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+                  <th style={{ padding: '16px 20px', fontWeight: '700' }}>Statement Field</th>
+                  <th style={{ padding: '16px 20px', fontWeight: '700' }}>{bank.name} PDF Format</th>
+                  <th style={{ padding: '16px 20px', fontWeight: '700', color: 'var(--accent-cyan)' }}>Generated .QBO / OFX Tag</th>
+                  <th style={{ padding: '16px 20px', fontWeight: '700' }}>QuickBooks Online &amp; Desktop Behavior</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bank.mappingPreview.map((row, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                    <td style={{ padding: '16px 20px', fontWeight: '700', color: '#fff' }}>{row.field}</td>
+                    <td style={{ padding: '16px 20px', fontFamily: 'monospace', color: 'var(--text-dim)', fontSize: '12px' }}>{row.raw}</td>
+                    <td style={{ padding: '16px 20px', fontFamily: 'monospace', color: 'var(--accent-cyan)', fontSize: '12px', fontWeight: '600' }}>{row.qboTag}</td>
+                    <td style={{ padding: '16px 20px', color: 'var(--text-muted)', lineHeight: 1.5 }}>{row.qbBehavior}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Bank Specific Feature Highlights */}
       <section style={{ marginBottom: '64px' }}>

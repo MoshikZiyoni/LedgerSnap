@@ -98,6 +98,15 @@ export default function Footer({ onNavigate }) {
                   </a>
                 </li>
               ))}
+              <li style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <a
+                  href="/banks"
+                  onClick={(e) => handleLinkClick(e, '/banks')}
+                  style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  🏦 View All 30 US Banks Directory →
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -120,26 +129,10 @@ export default function Footer({ onNavigate }) {
                   </a>
                 </li>
               ))}
-              <li style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                  ✓ Bypasses 90-day Intuit bank feed limits with validated .QBO files.
-                </span>
-              </li>
               <li style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent-cyan)', fontWeight: '700' }}>
                   Free In-Browser Accounting Tools
                 </span>
-              </li>
-              <li>
-                <a
-                  href="/tools/qbo-viewer-checker"
-                  onClick={(e) => handleLinkClick(e, '/tools/qbo-viewer-checker')}
-                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  ⚡ QBO File Viewer &amp; Error OL-222 Checker
-                </a>
               </li>
               <li>
                 <a
@@ -154,29 +147,70 @@ export default function Footer({ onNavigate }) {
               </li>
               <li>
                 <a
-                  href="/tools/ofx-qfx-to-qbo"
-                  onClick={(e) => handleLinkClick(e, '/tools/ofx-qfx-to-qbo')}
+                  href="/tools/ofx-to-qbo"
+                  onClick={(e) => handleLinkClick(e, '/tools/ofx-to-qbo')}
                   style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                   onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
-                  🔄 Free OFX / QFX to QBO Converter
+                  🔄 Free OFX to QBO Converter
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/tools/qfx-to-qbo"
+                  onClick={(e) => handleLinkClick(e, '/tools/qfx-to-qbo')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  ⚡ Free Quicken QFX to QuickBooks QBO
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/tools/qbo-viewer-and-validator"
+                  onClick={(e) => handleLinkClick(e, '/tools/qbo-viewer-and-validator')}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '13px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  🔍 Free QBO File Viewer &amp; Validator
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Legal & Comparisons */}
+          {/* Column 3: Guides, Legal & Comparisons */}
           <div>
             <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '16px', letterSpacing: '0.2px' }}>
+              QuickBooks Troubleshooting Guides
+            </h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '18px' }}>
+              {SEO_GUIDES.map((g) => (
+                <li key={g.slug}>
+                  <a
+                    href={`/guides/${g.slug}`}
+                    onClick={(e) => handleLinkClick(e, `/guides/${g.slug}`)}
+                    style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '12px' }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                  >
+                    {g.title.split(':')[0]}
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '12px', letterSpacing: '0.2px' }}>
               Trust &amp; Legal Policies
             </h4>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <li>
                 <a
                   href="/terms"
                   onClick={(e) => handleLinkClick(e, '/terms')}
-                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '12px' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                   onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
@@ -187,7 +221,7 @@ export default function Footer({ onNavigate }) {
                 <a
                   href="/privacy"
                   onClick={(e) => handleLinkClick(e, '/privacy')}
-                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '12px' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                   onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
@@ -198,16 +232,16 @@ export default function Footer({ onNavigate }) {
                 <a
                   href="/refund"
                   onClick={(e) => handleLinkClick(e, '/refund')}
-                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s', fontSize: '12px' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
                   onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
-                  Refund &amp; Cancellation Policy (14-Day Guarantee)
+                  Refund Policy (14-Day Guarantee)
                 </a>
               </li>
               <li style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--accent-cyan)', fontWeight: '700' }}>
-                  Alternative Comparisons
+                  Competitor Comparisons
                 </span>
               </li>
               {SEO_COMPARISONS.map((c) => (
