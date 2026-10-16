@@ -16,12 +16,29 @@ if os.path.exists(env_file):
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
 
-# Detect Database Mode: Cloud PostgreSQL vs Local SQLite
-DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("SUPABASE_DB_URL")
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    # Fix Render/Heroku postgres:// schema to standard postgresql://
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+import re
 
+def sanitize_database_url(raw_url: Optional[str]) -> Optional[str]:
+    """Cleans and normalizes database URL, removing accidental newlines, quotes, and finicky libpq params."""
+    if not raw_url:
+        return None
+    url = raw_url.strip().strip("'\"").replace("\r", "").replace("\n", "").strip()
+    if url.startswith("postgres://"):
+        # Fix Render/Heroku postgres:// schema to standard postgresql://
+        url = url.replace("postgres://", "postgresql://", 1)
+    
+    # Strip channel_binding which causes psycopg2/libpq OperationalError on Linux containers
+    url = re.sub(r'[&?]channel_binding=[^&]+', '', url)
+    if url.endswith("?"):
+        url = url[:-1]
+    if "?" not in url and "&" in url:
+        url = url.replace("&", "?", 1)
+    return url
+
+# Detect Database Mode: Cloud PostgreSQL vs Local SQLite
+DATABASE_URL = sanitize_database_url(
+    os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("SUPABASE_DB_URL")
+)
 USE_POSTGRES = bool(DATABASE_URL)
 
 DB_PATH = os.getenv("SQLITE_DB_PATH") or os.getenv("DATABASE_PATH") or os.path.join(os.path.dirname(__file__), "banktoqbo.db")
