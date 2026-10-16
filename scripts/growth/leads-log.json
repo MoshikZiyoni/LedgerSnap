@@ -1,5 +1,80 @@
 [
   {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1td0zcv/qbo_stop_all_the_freaking_pop_ups/",
+    "title": "QBO - stop all the freaking pop ups",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1td0zcv/qbo_stop_all_the_freaking_pop_ups/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-05-14T15:06:49.000Z",
+    "discoveredAt": "2026-10-16T17:48:41.341Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1tiyqum/downloading_qbo_data_advice_needed/",
+    "title": "Downloading QBO data - Advice needed",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1tiyqum/downloading_qbo_data_advice_needed/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-05-20T20:56:16.000Z",
+    "discoveredAt": "2026-10-16T17:48:40.121Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/convert/chase-pdf-to-qbo",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/convert/chase-pdf-to-qbo](https://ledger-snap.com/convert/chase-pdf-to-qbo) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1tkmq2v/square_pos_to_qbo_monthly_journal/",
+    "title": "Square POS to QBO monthly journal.",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1tkmq2v/square_pos_to_qbo_monthly_journal/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-05-22T15:41:55.000Z",
+    "discoveredAt": "2026-10-16T17:48:38.904Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1tuvfdv/qbo_bank_feed_keeps_disconnecting/",
+    "title": "QBO Bank Feed Keeps Disconnecting",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1tuvfdv/qbo_bank_feed_keeps_disconnecting/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-06-02T16:04:28.000Z",
+    "discoveredAt": "2026-10-16T17:48:37.686Z",
+    "matchedPains": [
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/convert/bank-of-america-pdf-to-qbo",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/convert/bank-of-america-pdf-to-qbo](https://ledger-snap.com/convert/bank-of-america-pdf-to-qbo) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/QuickBooks/comments/1u8o7pc/has_anyone_done_a_qbo_import_for_credit_card/",
+    "title": "Has anyone done a QBO import for credit card transactions?",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1u8o7pc/has_anyone_done_a_qbo_import_for_credit_card/",
+    "author": "reddit_user",
+    "subreddit": "QuickBooks",
+    "published": "2026-06-17T22:07:32.000Z",
+    "discoveredAt": "2026-10-16T17:48:36.164Z",
+    "matchedPains": [
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
     "id": "https://www.reddit.com/r/Bookkeeping/comments/1tvavsk/qbo_support_ridiculous/",
     "title": "QBO Support - Ridiculous",
     "url": "https://www.reddit.com/r/Bookkeeping/comments/1tvavsk/qbo_support_ridiculous/",
