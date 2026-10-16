@@ -1,5 +1,82 @@
 [
   {
+    "id": "t3_1ul067j",
+    "title": "QBO Connections past month - disconnected across 12+ accounts",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1ul067j/qbo_connections_past_month_disconnected_across_12/",
+    "author": "Ambitious-Permit-636",
+    "subreddit": "Bookkeeping",
+    "published": "2026-07-01T22:27:37.000Z",
+    "discoveredAt": "2026-10-16T00:05:27.782Z",
+    "matchedPains": [
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/convert/chase-pdf-to-qbo",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/convert/chase-pdf-to-qbo](https://ledger-snap.com/convert/chase-pdf-to-qbo) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "t3_1ul5pks",
+    "title": "Best way to enter confusing loan balance and payments to QBO?",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1ul5pks/best_way_to_enter_confusing_loan_balance_and/",
+    "author": "rosyboys_daisygirls",
+    "subreddit": "Bookkeeping",
+    "published": "2026-07-02T02:33:32.000Z",
+    "discoveredAt": "2026-10-16T00:05:26.631Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion",
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1vhrlvm/quickbooks_beginning_balance_doesnt_match_bank/",
+    "title": "QuickBooks Beginning Balance Doesn't Match Bank Statement Opening Balance",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1vhrlvm/quickbooks_beginning_balance_doesnt_match_bank/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-08-07T05:21:58.000Z",
+    "discoveredAt": "2026-10-16T00:05:25.472Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1vkk5z5/how_to_handle_noncalendar_bank_statement_cycle/",
+    "title": "How to handle non-calendar bank statement cycle for reconciliation?",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1vkk5z5/how_to_handle_noncalendar_bank_statement_cycle/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-08-10T12:59:32.000Z",
+    "discoveredAt": "2026-10-16T00:05:24.240Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion",
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1vycsqh/covid_eidl_reconciliation_statements_not/",
+    "title": "Covid EIDL reconciliation statements not available from SBA",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1vycsqh/covid_eidl_reconciliation_statements_not/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-08-25T21:14:36.000Z",
+    "discoveredAt": "2026-10-16T00:05:22.845Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
     "id": "t3_1vkk5z5",
     "title": "How to handle non-calendar bank statement cycle for reconciliation?",
     "url": "https://www.reddit.com/r/Bookkeeping/comments/1vkk5z5/how_to_handle_noncalendar_bank_statement_cycle/",
