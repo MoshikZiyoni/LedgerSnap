@@ -7,7 +7,7 @@ import json
 import logging
 import requests
 import pandas as pd
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
@@ -103,6 +103,8 @@ SAMPLE_TRANSACTIONS = [
     {"date": "10/18/2026", "description": "CHASE BUSINESS CHECKING MONTHLY FEE WAIVED", "amount": 0.00, "type": "Credit", "balance": 16926.70}
 ]
 
+GEO_IP_CACHE: Dict[str, Dict[str, str]] = {}
+
 def get_client_ip(request: Request) -> str:
     cf_ip = request.headers.get("cf-connecting-ip")
     if cf_ip:
@@ -111,6 +113,105 @@ def get_client_ip(request: Request) -> str:
     if x_forwarded:
         return x_forwarded.split(",")[0].strip()
     return request.client.host if request.client else ""
+
+def get_client_geo(ip: str, request: Optional[Request] = None) -> Dict[str, str]:
+    """
+    Resolves client geographic location (City, Region/State, Country) and ISP/Org.
+    1. Checks Cloudflare CF-IPCountry / CF-IPCity / CF-Region headers (0ms latency).
+    2. Checks in-memory GEO_IP_CACHE.
+    3. Resolves via fast external GeoIP provider with timeout, then caches in memory.
+    """
+    # 1. Cloudflare headers if present on request
+    if request:
+        cf_city = request.headers.get("cf-ipcity")
+        cf_region = request.headers.get("cf-region") or request.headers.get("cf-region-code")
+        cf_country = request.headers.get("cf-ipcountry")
+        if cf_city or cf_country:
+            parts = [p for p in [cf_city, cf_region, cf_country] if p]
+            loc = ", ".join(parts)
+            return {
+                "location": loc,
+                "city": cf_city or "",
+                "region": cf_region or "",
+                "country": cf_country or "",
+                "org": "Cloudflare Edge"
+            }
+
+    # 2. Check local or private network
+    if not ip or ip in ["127.0.0.1", "localhost", "::1"] or ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("100.64."):
+        return {"location": "Local / Private Network", "city": "Local", "region": "", "country": "Local", "org": "Localhost"}
+
+    if ip in GEO_IP_CACHE:
+        return GEO_IP_CACHE[ip]
+
+    # 3. Lookup via fast GeoIP API (ip-api.com) with 1.5s timeout
+    try:
+        resp = requests.get(
+            f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,org",
+            timeout=1.5
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("status") == "success":
+                city = data.get("city") or ""
+                region = data.get("regionName") or ""
+                country = data.get("country") or ""
+                org = data.get("org") or ""
+                loc = ", ".join([p for p in [city, region, country] if p]) or "Unknown Location"
+                geo_info = {
+                    "location": loc,
+                    "city": city,
+                    "region": region,
+                    "country": country,
+                    "org": org
+                }
+                GEO_IP_CACHE[ip] = geo_info
+                return geo_info
+    except Exception:
+        pass
+
+    fallback = {"location": "Unknown Location", "city": "", "region": "", "country": "", "org": ""}
+    GEO_IP_CACHE[ip] = fallback
+    return fallback
+
+def classify_visitor(ua_str: str, org_str: str = "") -> Tuple[str, str]:
+    """
+    Classifies visitor tag and user device / platform.
+    Returns: (tag, device_name)
+    e.g. ('🤖 GOOGLEBOT', 'Googlebot (Nexus 5X Emulation)')
+         ('👤 HUMAN USER', 'Apple iPhone')
+         ('👤 HUMAN USER', 'Windows PC')
+    """
+    ua = (ua_str or "").lower()
+    org = (org_str or "").lower()
+
+    # Search crawler & bot detection
+    if "googlebot" in ua or "nexus 5x" in ua or "google llc" in org or "google-inspectiontool" in ua:
+        return ("🤖 GOOGLEBOT", "Googlebot (Nexus 5X Emulation)" if "nexus 5x" in ua else "Google Search Crawler")
+    if "adsbot-google" in ua:
+        return ("🤖 GOOGLEBOT", "Google AdsBot Crawler")
+    if any(b in ua for b in [
+        "bot", "crawl", "spider", "headless", "lighthouse", "slurp", 
+        "facebookexternalhit", "redditbot", "bytespider", "gptbot", 
+        "claude", "perplexity", "google-extended", "bingbot", "yandex"
+    ]):
+        return ("🤖 BOT/CRAWLER", "Automated Crawler")
+
+    # Real human devices
+    if "iphone" in ua:
+        return ("👤 HUMAN USER", "Apple iPhone")
+    if "ipad" in ua:
+        return ("👤 HUMAN USER", "Apple iPad")
+    if "android" in ua:
+        return ("👤 HUMAN USER", "Android Device")
+    if "macintosh" in ua or "mac os x" in ua:
+        return ("👤 HUMAN USER", "Apple Mac")
+    if "windows" in ua:
+        return ("👤 HUMAN USER", "Windows PC")
+    if "linux" in ua:
+        return ("👤 HUMAN USER", "Linux Desktop")
+
+    return ("👤 HUMAN USER", "Web Browser")
 
 @app.get("/")
 def root():
@@ -134,18 +235,17 @@ def get_free_tier_status(request: Request, client_id: Optional[str] = Query(None
     
     ua = request.headers.get("user-agent", "")
     referer = request.headers.get("referer", "direct")
-    is_bot = any(b in ua.lower() for b in [
-        "bot", "crawl", "spider", "headless", "lighthouse", "slurp", 
-        "facebookexternalhit", "redditbot", "bytespider", "gptbot", 
-        "claude", "perplexity", "google-extended"
-    ])
-    tag = "🤖 BOT/CRAWLER" if is_bot else "👤 HUMAN USER"
-    logger.info(f"[{tag}] IP={real_ip} | CID={cid} | Referer={referer} | UA={ua[:80]}")
+    geo = get_client_geo(real_ip, request)
+    tag, device = classify_visitor(ua, geo.get("org", ""))
+    
+    logger.info(f"[{tag}] 📍 {geo['location']} | Device={device} | IP={real_ip} | CID={cid} | Referer={referer}")
 
     return {
         "allowed": allowed,
         "conversions_used": used,
-        "ip": real_ip
+        "ip": real_ip,
+        "location": geo["location"],
+        "device": device
     }
 
 @app.post("/api/free-tier/reset")
@@ -647,6 +747,9 @@ async def convert_pdf(
     """Uploads and parses bank statement PDF, strictly enforcing the 1-free-trial limit per IP/device."""
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
+    geo = get_client_geo(real_ip, request)
+    tag, device = classify_visitor(request.headers.get("user-agent", ""), geo.get("org", ""))
+    logger.info(f"📄 [CONVERT ATTEMPT] [{tag}] 📍 {geo['location']} | Device={device} | File={file.filename} | IP={real_ip} | CID={cid}")
 
     # Check if user has an active paid license or admin status
     has_valid_license = False
@@ -732,6 +835,8 @@ def download_converted(
     """Downloads parsed transactions in QBO, QFX, OFX, Excel (.xlsx), CSV presets, or Hashavshevet format."""
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
+    geo = get_client_geo(real_ip, request)
+    logger.info(f"💾 [DOWNLOAD] Format={format} | 📍 {geo['location']} | IP={real_ip} | CID={cid} | FileID={file_id}")
     
     is_authorized = False
     if is_admin_email(cid) or (license_key and ("ADMIN" in license_key.upper() or license_key == ADMIN_LICENSE_KEY)):

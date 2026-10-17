@@ -55,8 +55,8 @@ jobs:
           git add scripts/growth/leads-log.json
           if ! git diff-index --quiet HEAD; then
             git commit -m "chore(growth): update reddit leads log [skip ci]"
-            git push origin HEAD:${{ github.ref }}
-            echo "✅ Successfully synced updated leads log to repository."
+            git push origin HEAD:refs/heads/data/leads-log --force
+            echo "✅ Successfully synced updated leads log to data/leads-log branch."
           else
             echo "ℹ️ No new leads to commit."
           fi
