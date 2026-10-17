@@ -1,5 +1,84 @@
 [
   {
+    "id": "t3_1r0qwu9",
+    "title": "Sorting credit card statements into categories - what am I missing?",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1r0qwu9/sorting_credit_card_statements_into_categories/",
+    "author": "saradipity",
+    "subreddit": "QuickBooks",
+    "published": "2026-02-10T04:19:06.000Z",
+    "discoveredAt": "2026-10-17T00:09:31.561Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "If you're dealing with client PDF bank statements for QuickBooks, stick with **native Intuit .QBO (OFX 200) Web Connect files** rather than CSV.\n\nWith CSV, QuickBooks forces manual column mapping on every batch and often scrambles debit/credit signs or truncates multi-line check memos. With .QBO, QuickBooks maps the register automatically, assigns unique transaction IDs (<FITID>) to prevent duplicate rows, and preserves running balances.\n\nCrucial tip: Make sure your conversion verifies the penny-level balance checksum (*Opening Balance + Credits - Debits = Closing Balance*) before you import into your GL.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/QuickBooks/comments/1rdz41j/quickbooks_desktop_2024_unable_to_import_bank_of/",
+    "title": "Quickbooks Desktop 2024: Unable to import Bank of America Bank Feed using .qbo File",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1rdz41j/quickbooks_desktop_2024_unable_to_import_bank_of/",
+    "author": "reddit_user",
+    "subreddit": "QuickBooks",
+    "published": "2026-02-25T01:14:49.000Z",
+    "discoveredAt": "2026-10-17T00:09:30.373Z",
+    "matchedPains": [
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/convert/bank-of-america-pdf-to-qbo",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/convert/bank-of-america-pdf-to-qbo](https://ledger-snap.com/convert/bank-of-america-pdf-to-qbo) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Bookkeeping/comments/1soyl0s/zoho_import_statements_as_pdf/",
+    "title": "Zoho: import statements as .pdf?",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1soyl0s/zoho_import_statements_as_pdf/",
+    "author": "reddit_user",
+    "subreddit": "Bookkeeping",
+    "published": "2026-04-18T14:07:17.000Z",
+    "discoveredAt": "2026-10-17T00:09:29.170Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion",
+      "Catch-up / Clean-up Bookkeeping & Backlog",
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/QuickBooks/comments/1tmdh5l/tired_of_quickbooks_bank_feeds_missing/",
+    "title": "Tired of QuickBooks bank feeds missing transactions — built a PDF→QBO converter",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1tmdh5l/tired_of_quickbooks_bank_feeds_missing/",
+    "author": "reddit_user",
+    "subreddit": "QuickBooks",
+    "published": "2026-05-24T14:19:23.000Z",
+    "discoveredAt": "2026-10-17T00:09:27.923Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion",
+      "Catch-up / Clean-up Bookkeeping & Backlog",
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/convert/chase-pdf-to-qbo",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/convert/chase-pdf-to-qbo](https://ledger-snap.com/convert/chase-pdf-to-qbo) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/QuickBooks/comments/1tuzike/made_a_free_pdf_splitter_that_splits_into_files/",
+    "title": "Made a free PDF splitter that splits into files per invoice and renames to Vendor-Date-INV#",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1tuzike/made_a_free_pdf_splitter_that_splits_into_files/",
+    "author": "reddit_user",
+    "subreddit": "QuickBooks",
+    "published": "2026-06-02T18:22:03.000Z",
+    "discoveredAt": "2026-10-17T00:09:26.302Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "If you're dealing with client PDF bank statements for QuickBooks, stick with **native Intuit .QBO (OFX 200) Web Connect files** rather than CSV.\n\nWith CSV, QuickBooks forces manual column mapping on every batch and often scrambles debit/credit signs or truncates multi-line check memos. With .QBO, QuickBooks maps the register automatically, assigns unique transaction IDs (<FITID>) to prevent duplicate rows, and preserves running balances.\n\nCrucial tip: Make sure your conversion verifies the penny-level balance checksum (*Opening Balance + Credits - Debits = Closing Balance*) before you import into your GL.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
     "id": "t3_1sunbmc",
     "title": "I've reached my boiling point with QBO.",
     "url": "https://www.reddit.com/r/Bookkeeping/comments/1sunbmc/ive_reached_my_boiling_point_with_qbo/",
