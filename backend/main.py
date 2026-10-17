@@ -4,12 +4,16 @@ import io
 import hmac
 import hashlib
 import json
+import logging
 import requests
 import pandas as pd
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
+
+logger = logging.getLogger("ledgersnap")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # Load environment variables from .env file directly if present
 env_file = os.path.join(os.path.dirname(__file__), ".env")
@@ -108,12 +112,36 @@ def get_client_ip(request: Request) -> str:
         return x_forwarded.split(",")[0].strip()
     return request.client.host if request.client else ""
 
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "service": "LedgerSnap API",
+        "version": "1.0.0",
+        "docs": "/docs"
+    }
+
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
+
 @app.get("/api/free-tier/status")
 def get_free_tier_status(request: Request, client_id: Optional[str] = Query(None)):
     """Checks whether this IP or device has used their 1 free statement conversion."""
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
     allowed, used = get_free_usage_status(cid, real_ip)
+    
+    ua = request.headers.get("user-agent", "")
+    referer = request.headers.get("referer", "direct")
+    is_bot = any(b in ua.lower() for b in [
+        "bot", "crawl", "spider", "headless", "lighthouse", "slurp", 
+        "facebookexternalhit", "redditbot", "bytespider", "gptbot", 
+        "claude", "perplexity", "google-extended"
+    ])
+    tag = "🤖 BOT/CRAWLER" if is_bot else "👤 HUMAN USER"
+    logger.info(f"[{tag}] IP={real_ip} | CID={cid} | Referer={referer} | UA={ua[:80]}")
+
     return {
         "allowed": allowed,
         "conversions_used": used,
