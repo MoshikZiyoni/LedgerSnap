@@ -1,5 +1,80 @@
 [
   {
+    "id": "https://www.reddit.com/r/Accounting/comments/1wnm0we/tips_on_successful_integration_of_shopify_data/",
+    "title": "Tips on successful integration of Shopify data into Quickbooks?",
+    "url": "https://www.reddit.com/r/Accounting/comments/1wnm0we/tips_on_successful_integration_of_shopify_data/",
+    "author": "reddit_user",
+    "subreddit": "Accounting",
+    "published": "2026-09-22T21:05:54.000Z",
+    "discoveredAt": "2026-10-17T18:10:24.687Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Accounting/comments/1wsjh33/accountants_how_would_you_approach_this/",
+    "title": "Accountants: How would you approach this historical QuickBooks Desktop migration?",
+    "url": "https://www.reddit.com/r/Accounting/comments/1wsjh33/accountants_how_would_you_approach_this/",
+    "author": "reddit_user",
+    "subreddit": "Accounting",
+    "published": "2026-09-28T16:33:32.000Z",
+    "discoveredAt": "2026-10-17T18:10:23.501Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/Accounting/comments/1wssmai/replacement_for_quickbooks/",
+    "title": "Replacement for Quickbooks",
+    "url": "https://www.reddit.com/r/Accounting/comments/1wssmai/replacement_for_quickbooks/",
+    "author": "reddit_user",
+    "subreddit": "Accounting",
+    "published": "2026-09-28T22:13:19.000Z",
+    "discoveredAt": "2026-10-17T18:10:22.300Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/QuickBooks/comments/1x1ec09/qbo_users_what_do_you_do_when_the_payment_arrives/",
+    "title": "QBO users: what do you do when the payment arrives before the remittance?",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1x1ec09/qbo_users_what_do_you_do_when_the_payment_arrives/",
+    "author": "reddit_user",
+    "subreddit": "QuickBooks",
+    "published": "2026-10-09T06:47:16.000Z",
+    "discoveredAt": "2026-10-17T18:10:21.106Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "If you're dealing with client PDF bank statements for QuickBooks, stick with **native Intuit .QBO (OFX 200) Web Connect files** rather than CSV.\n\nWith CSV, QuickBooks forces manual column mapping on every batch and often scrambles debit/credit signs or truncates multi-line check memos. With .QBO, QuickBooks maps the register automatically, assigns unique transaction IDs (<FITID>) to prevent duplicate rows, and preserves running balances.\n\nCrucial tip: Make sure your conversion verifies the penny-level balance checksum (*Opening Balance + Credits - Debits = Closing Balance*) before you import into your GL.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "t3_1x8detg",
+    "title": "My month-end close checklist — 12 steps, fits on one page",
+    "url": "https://www.reddit.com/r/Bookkeeping/comments/1x8detg/my_monthend_close_checklist_12_steps_fits_on_one/",
+    "author": "No_Discount_1199",
+    "subreddit": "Bookkeeping",
+    "published": "2026-10-17T15:44:03.000Z",
+    "discoveredAt": "2026-10-17T18:10:19.570Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
     "id": "https://www.reddit.com/r/QuickBooks/comments/1phkqz5/chase_ink_business_credit_card_one_account/",
     "title": "Chase Ink Business credit card - one account - multiple credit card numbers. Importing transactions?",
     "url": "https://www.reddit.com/r/QuickBooks/comments/1phkqz5/chase_ink_business_credit_card_one_account/",
