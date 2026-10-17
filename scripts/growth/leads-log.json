@@ -1,5 +1,82 @@
 [
   {
+    "id": "https://www.reddit.com/r/smallbusiness/comments/1sau2mu/quickbooks_desktop_alternatives/",
+    "title": "QuickBooks Desktop Alternatives?",
+    "url": "https://www.reddit.com/r/smallbusiness/comments/1sau2mu/quickbooks_desktop_alternatives/",
+    "author": "reddit_user",
+    "subreddit": "smallbusiness",
+    "published": "2026-04-02T21:18:24.000Z",
+    "discoveredAt": "2026-10-17T11:58:52.487Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "If you're dealing with client PDF bank statements for QuickBooks, stick with **native Intuit .QBO (OFX 200) Web Connect files** rather than CSV.\n\nWith CSV, QuickBooks forces manual column mapping on every batch and often scrambles debit/credit signs or truncates multi-line check memos. With .QBO, QuickBooks maps the register automatically, assigns unique transaction IDs (<FITID>) to prevent duplicate rows, and preserves running balances.\n\nCrucial tip: Make sure your conversion verifies the penny-level balance checksum (*Opening Balance + Credits - Debits = Closing Balance*) before you import into your GL.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/smallbusiness/comments/1sk02q2/how_do_you_handle_clients_who_only_bring_pdf_bank/",
+    "title": "How do you handle clients who only bring PDF bank statements (no CSV)?",
+    "url": "https://www.reddit.com/r/smallbusiness/comments/1sk02q2/how_do_you_handle_clients_who_only_bring_pdf_bank/",
+    "author": "reddit_user",
+    "subreddit": "smallbusiness",
+    "published": "2026-04-13T04:03:51.000Z",
+    "discoveredAt": "2026-10-17T11:58:51.272Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "If you're dealing with client PDF bank statements for QuickBooks, stick with **native Intuit .QBO (OFX 200) Web Connect files** rather than CSV.\n\nWith CSV, QuickBooks forces manual column mapping on every batch and often scrambles debit/credit signs or truncates multi-line check memos. With .QBO, QuickBooks maps the register automatically, assigns unique transaction IDs (<FITID>) to prevent duplicate rows, and preserves running balances.\n\nCrucial tip: Make sure your conversion verifies the penny-level balance checksum (*Opening Balance + Credits - Debits = Closing Balance*) before you import into your GL.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/smallbusiness/comments/1tjitl4/receipt_expense_tools_still_suck/",
+    "title": "Receipt / Expense Tools still SUCK!",
+    "url": "https://www.reddit.com/r/smallbusiness/comments/1tjitl4/receipt_expense_tools_still_suck/",
+    "author": "reddit_user",
+    "subreddit": "smallbusiness",
+    "published": "2026-05-21T12:21:14.000Z",
+    "discoveredAt": "2026-10-17T11:58:50.100Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion",
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/smallbusiness/comments/1v80zpj/how_do_you_handle_a_customer_who_charges_back/",
+    "title": "How do you handle a customer who charges back after using it for months?",
+    "url": "https://www.reddit.com/r/smallbusiness/comments/1v80zpj/how_do_you_handle_a_customer_who_charges_back/",
+    "author": "reddit_user",
+    "subreddit": "smallbusiness",
+    "published": "2026-07-27T13:50:31.000Z",
+    "discoveredAt": "2026-10-17T11:58:48.887Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "If you're dealing with client PDF bank statements for QuickBooks, stick with **native Intuit .QBO (OFX 200) Web Connect files** rather than CSV.\n\nWith CSV, QuickBooks forces manual column mapping on every batch and often scrambles debit/credit signs or truncates multi-line check memos. With .QBO, QuickBooks maps the register automatically, assigns unique transaction IDs (<FITID>) to prevent duplicate rows, and preserves running balances.\n\nCrucial tip: Make sure your conversion verifies the penny-level balance checksum (*Opening Balance + Credits - Debits = Closing Balance*) before you import into your GL.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
+    "id": "https://www.reddit.com/r/smallbusiness/comments/1vxjeai/amex_business_checking_with_quickbooks_online/",
+    "title": "Amex Business Checking with QuickBooks Online?",
+    "url": "https://www.reddit.com/r/smallbusiness/comments/1vxjeai/amex_business_checking_with_quickbooks_online/",
+    "author": "reddit_user",
+    "subreddit": "smallbusiness",
+    "published": "2026-08-24T23:40:04.000Z",
+    "discoveredAt": "2026-10-17T11:58:47.423Z",
+    "matchedPains": [
+      "PDF to QuickBooks / QBO / CSV Conversion",
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/convert/american-express-pdf-to-qbo",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/convert/american-express-pdf-to-qbo](https://ledger-snap.com/convert/american-express-pdf-to-qbo) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
     "id": "t3_1sunats",
     "title": "Moving away from QBO",
     "url": "https://www.reddit.com/r/QuickBooks/comments/1sunats/moving_away_from_qbo/",
