@@ -28,7 +28,8 @@ import {
   generateClientCsv3Col, 
   generateClientCsv4Col, 
   generateClientHashavshevetCsv,
-  BANK_INTU_PRESETS 
+  BANK_INTU_PRESETS,
+  BANK_INTU_PRESET_LIST
 } from './utils/qboUtils';
 
 const API_BASE = import.meta.env.VITE_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
@@ -1701,7 +1702,7 @@ export default function App() {
                     <select 
                       value={exportSettings.intuBid} 
                       onChange={e => {
-                        const selected = BANK_INTU_PRESETS.find(p => p.bid === e.target.value);
+                        const selected = BANK_INTU_PRESET_LIST.find(p => p.bid === e.target.value);
                         setExportSettings(s => ({
                           ...s,
                           intuBid: e.target.value,
@@ -1710,7 +1711,7 @@ export default function App() {
                       }}
                       style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' }}
                     >
-                      {BANK_INTU_PRESETS.map(p => (
+                      {BANK_INTU_PRESET_LIST.map(p => (
                         <option key={p.bid} value={p.bid}>{p.label}</option>
                       ))}
                     </select>

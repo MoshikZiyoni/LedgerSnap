@@ -81,6 +81,8 @@ export const BANK_INTU_PRESETS = {
   "24001": { org: "Citibank", fid: "24001", bid: "24001", routing: "021000089", label: "Citibank (24001)" }
 };
 
+export const BANK_INTU_PRESET_LIST = Object.values(BANK_INTU_PRESETS);
+
 export function transliterateHebrew(text = '') {
   let cleaned = text.trim();
   for (const [term, trans] of Object.entries(BANKING_TRANSLATIONS)) {

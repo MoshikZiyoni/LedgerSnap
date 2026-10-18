@@ -1031,6 +1031,8 @@ def export_customized(request: Request, payload: Dict[str, Any]):
     license_key = payload.get("license_key")
     file_id = payload.get("file_id", "")
     fmt = payload.get("format", "qbo").lower()
+    geo = get_client_geo(real_ip, request)
+    logger.info(f"💾 [EXPORT CUSTOM] Format={fmt} | 📍 {geo['location']} | IP={real_ip} | CID={cid} | Rows={len(payload.get('transactions', []))}")
 
     is_authorized = False
     if is_admin_email(cid) or (license_key and ("ADMIN" in license_key.upper() or license_key == ADMIN_LICENSE_KEY)):
