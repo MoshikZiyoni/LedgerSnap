@@ -147,7 +147,7 @@ def get_client_geo(ip: str, request: Optional[Request] = None) -> Dict[str, str]
     # 3. Lookup via fast GeoIP API (ip-api.com) with 1.5s timeout
     try:
         resp = requests.get(
-            f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,org",
+            f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,org,isp,hosting",
             timeout=1.5
         )
         if resp.status_code == 200:
@@ -156,48 +156,75 @@ def get_client_geo(ip: str, request: Optional[Request] = None) -> Dict[str, str]
                 city = data.get("city") or ""
                 region = data.get("regionName") or ""
                 country = data.get("country") or ""
-                org = data.get("org") or ""
+                org = data.get("org") or data.get("isp") or ""
+                is_hosting = bool(data.get("hosting", False))
                 loc = ", ".join([p for p in [city, region, country] if p]) or "Unknown Location"
                 geo_info = {
                     "location": loc,
                     "city": city,
                     "region": region,
                     "country": country,
-                    "org": org
+                    "org": org,
+                    "hosting": is_hosting
                 }
                 GEO_IP_CACHE[ip] = geo_info
                 return geo_info
     except Exception:
         pass
 
-    fallback = {"location": "Unknown Location", "city": "", "region": "", "country": "", "org": ""}
+    fallback = {"location": "Unknown Location", "city": "", "region": "", "country": "", "org": "", "hosting": False}
     GEO_IP_CACHE[ip] = fallback
     return fallback
 
-def classify_visitor(ua_str: str, org_str: str = "") -> Tuple[str, str]:
+def classify_visitor(ua_str: str, org_str: str = "", is_hosting: bool = False) -> Tuple[str, str]:
     """
     Classifies visitor tag and user device / platform.
+    Accurately separates datacenter crawlers / scrapers from real human residential users.
     Returns: (tag, device_name)
-    e.g. ('🤖 GOOGLEBOT', 'Googlebot (Nexus 5X Emulation)')
+    e.g. ('🤖 AWS/HEADLESS BOT', 'AWS Cloud Server')
+         ('🤖 APPLEBOT', 'Apple Web Crawler')
          ('👤 HUMAN USER', 'Apple iPhone')
          ('👤 HUMAN USER', 'Windows PC')
     """
     ua = (ua_str or "").lower()
     org = (org_str or "").lower()
 
-    # Search crawler & bot detection
-    if "googlebot" in ua or "nexus 5x" in ua or "google llc" in org or "google-inspectiontool" in ua:
+    # 1. Search engine & web crawlers
+    if "googlebot" in ua or "googlebot" in org or "nexus 5x" in ua or "google-inspectiontool" in ua:
         return ("🤖 GOOGLEBOT", "Googlebot (Nexus 5X Emulation)" if "nexus 5x" in ua else "Google Search Crawler")
     if "adsbot-google" in ua:
         return ("🤖 GOOGLEBOT", "Google AdsBot Crawler")
+    if "bingbot" in ua or "bing" in ua:
+        return ("🤖 BINGBOT", "Bing Search Crawler")
+    if "applebot" in ua or ("apple inc" in org and is_hosting):
+        return ("🤖 APPLEBOT", "Apple Web Crawler")
     if any(b in ua for b in [
         "bot", "crawl", "spider", "headless", "lighthouse", "slurp", 
         "facebookexternalhit", "redditbot", "bytespider", "gptbot", 
-        "claude", "perplexity", "google-extended", "bingbot", "yandex"
+        "claude", "perplexity", "google-extended", "yandex"
     ]):
         return ("🤖 BOT/CRAWLER", "Automated Crawler")
 
-    # Real human devices
+    # 2. Security Scanners
+    if "palo alto" in org:
+        return ("🛡️ SECURITY SCANNER", "Palo Alto Networks")
+
+    # 3. Datacenter / Cloud / Headless Scrapers (AWS, Azure, Linode, Leaseweb, etc.)
+    # Modern scrapers running on cloud instances often disguise their User-Agent as an iPhone/Mac.
+    if any(h in org for h in ["amazon", "aws", "ec2"]):
+        return ("🤖 AWS/HEADLESS BOT", "AWS Cloud Server")
+    if any(h in org for h in ["azure", "microsoft"]):
+        return ("🤖 AZURE/HEADLESS BOT", "Azure Cloud Server")
+    if any(v in org for v in ["m247", "express technologies", "vpn", "proxy"]):
+        return ("🛡️ VPN/PROXY NODE", "VPN / Proxy Node")
+    if is_hosting or any(h in org for h in [
+        "linode", "digitalocean", "leaseweb", "hostroyale", "ace data", 
+        "h4y technologies", "ippn", "tier.net", "ovh", "hetzner"
+    ]):
+        short_org = (org_str[:22] + "..") if len(org_str) > 22 else org_str
+        return ("🤖 CLOUD/DATACENTER", f"Cloud Host ({short_org})" if short_org else "Cloud Host")
+
+    # 4. Real human devices (Residential / Cellular ISP)
     if "iphone" in ua:
         return ("👤 HUMAN USER", "Apple iPhone")
     if "ipad" in ua:
@@ -236,7 +263,7 @@ def get_free_tier_status(request: Request, client_id: Optional[str] = Query(None
     ua = request.headers.get("user-agent", "")
     referer = request.headers.get("referer", "direct")
     geo = get_client_geo(real_ip, request)
-    tag, device = classify_visitor(ua, geo.get("org", ""))
+    tag, device = classify_visitor(ua, geo.get("org", ""), geo.get("hosting", False))
     
     logger.info(f"[{tag}] 📍 {geo['location']} | Device={device} | IP={real_ip} | CID={cid} | Referer={referer}")
 
