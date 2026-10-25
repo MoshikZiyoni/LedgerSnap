@@ -364,3 +364,29 @@ body.readable-font {
     width: 100% !important;
   }
 }
+
+/* Mobile Workstation Bottom Bar */
+.mobile-workstation-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-workstation-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: rgba(10, 14, 23, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 10px 16px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.7);
+  }
+}
+

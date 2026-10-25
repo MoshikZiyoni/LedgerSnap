@@ -331,10 +331,10 @@ async function executeIndexNow() {
   }
 }
 
-// Execute Reddit Hunt Script (V3 with guaranteed delivery of active leads)
+// Execute Reddit Hunt Script (V3 with fresh leads strictly from the last 48 hours)
 async function executeRedditHunt() {
   const scriptPath = path.join(REPO_ROOT, 'scripts', 'growth', 'reddit-lead-hunter.mjs');
-  const res = spawnSync('node', [scriptPath, '--max', '5', '--show-recent', '3'], { encoding: 'utf8', env: process.env });
+  const res = spawnSync('node', [scriptPath, '--max', '5', '--show-recent', '3', '--max-age', '48'], { encoding: 'utf8', env: process.env });
   const output = res.stdout || res.stderr || '';
 
   const leadsMatch = output.match(/Discovered & delivered (\d+) new qualified leads/);
@@ -342,12 +342,16 @@ async function executeRedditHunt() {
 
   if (count > 0) {
     return `🎯 <b>סריקת רדיט הסתיימה בהצלחה!</b>\n\n` +
-      `נמצאו ונשלחו <b>${count}</b> לידים חדשים לחלוטין ישירות לכאן.\n` +
+      `נמצאו ונשלחו <b>${count}</b> לידים חדשים וטריים (מ-48 השעות האחרונות) ישירות לכאן.\n` +
       `ההודעות המלאות עם ניסוח התשובה המוכנה נשלחו עכשיו ישירות לצ'אט למעלה!`;
-  } else {
-    return `🔍 <b>סריקת רדיט הושלמה בהצלחה! (נסרקו 150+ דיונים)</b>\n\n` +
-      `📌 שלחתי לך כרגע לצ'אט למעלה את <b>3 הדיונים הפעילים והרלוונטיים ביותר כרגע</b>, כולל תשובות מומחה מוכנות להעתקה בלחיצה אחת עם קישור לאתר!\n\n` +
+  } else if (output.includes('Delivered active lead')) {
+    return `🔍 <b>סריקת רדיט הושלמה!</b>\n\n` +
+      `📌 לא נפתחו דיונים חדשים ברגעים אלו, אך שלחתי למעלה דיונים פעילים וטריים מ-48 השעות האחרונות.\n\n` +
       `המערכת ממשיכה לנטר פוסטים חדשים ברקע 24/7.`;
+  } else {
+    return `🔍 <b>סריקת רדיט הושלמה בהצלחה! (נסרקו דיונים טריים בלבד)</b>\n\n` +
+      `ב-48 השעות האחרונות לא נפתחו פוסטים חדשים התואמים לשגיאות בנק או המרת דפי חשבון.\n` +
+      `המערכת מסננת פוסטים ישנים ולא תציף אותך בדיונים לא רלוונטיים מלפני חודשים. ברגע שיועלה פוסט חדש, תקבל התראה מיידית!`;
   }
 }
 

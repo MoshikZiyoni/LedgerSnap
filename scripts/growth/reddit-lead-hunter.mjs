@@ -49,26 +49,31 @@ function loadEnv() {
 }
 loadEnv();
 
-// High-intent search feeds across US accounting, bookkeeping & small business communities
+// Max age threshold for leads (posts older than this are strictly discarded)
+const DEFAULT_MAX_LEAD_AGE_HOURS = 48;
+
+// High-intent search feeds across US accounting, bookkeeping & small business communities (strictly sorted by new)
 const SEARCH_TARGETS = [
-  'https://www.reddit.com/r/Bookkeeping/search.rss?q=statement&restrict_sr=1',
-  'https://www.reddit.com/r/QuickBooks/search.rss?q=statement&restrict_sr=1',
-  'https://www.reddit.com/r/Bookkeeping/search.rss?q=pdf&restrict_sr=1',
-  'https://www.reddit.com/r/QuickBooks/search.rss?q=pdf&restrict_sr=1',
-  'https://www.reddit.com/r/Bookkeeping/search.rss?q=qbo&restrict_sr=1',
-  'https://www.reddit.com/r/QuickBooks/search.rss?q=qbo&restrict_sr=1',
-  'https://www.reddit.com/r/QuickBooks/search.rss?q=import&restrict_sr=1',
-  'https://www.reddit.com/r/QuickBooks/search.rss?q=bank+feed&restrict_sr=1',
-  'https://www.reddit.com/r/QuickBooks/search.rss?q=web+connect&restrict_sr=1',
-  'https://www.reddit.com/r/Bookkeeping/search.rss?q=import&restrict_sr=1',
-  'https://www.reddit.com/r/Bookkeeping/search.rss?q=reconcil&restrict_sr=1',
-  'https://www.reddit.com/r/Accounting/search.rss?q=statement+pdf&restrict_sr=1',
-  'https://www.reddit.com/r/Accounting/search.rss?q=quickbooks&restrict_sr=1',
-  'https://www.reddit.com/r/smallbusiness/search.rss?q=quickbooks+statement&restrict_sr=1',
-  'https://www.reddit.com/r/smallbusiness/search.rss?q=bank+statement+pdf&restrict_sr=1',
-  'https://www.reddit.com/r/tax/search.rss?q=quickbooks+statement&restrict_sr=1',
+  'https://www.reddit.com/r/Bookkeeping/search.rss?q=statement&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/QuickBooks/search.rss?q=statement&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/Bookkeeping/search.rss?q=pdf&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/QuickBooks/search.rss?q=pdf&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/Bookkeeping/search.rss?q=qbo&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/QuickBooks/search.rss?q=qbo&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/QuickBooks/search.rss?q=import&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/QuickBooks/search.rss?q=bank+feed&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/QuickBooks/search.rss?q=web+connect&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/Bookkeeping/search.rss?q=import&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/Bookkeeping/search.rss?q=reconcil&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/Accounting/search.rss?q=statement+pdf&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/Accounting/search.rss?q=quickbooks&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/smallbusiness/search.rss?q=quickbooks+statement&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/smallbusiness/search.rss?q=bank+statement+pdf&restrict_sr=1&sort=new&t=week',
+  'https://www.reddit.com/r/tax/search.rss?q=quickbooks+statement&restrict_sr=1&sort=new&t=week',
   'https://www.reddit.com/r/Bookkeeping/new.rss',
-  'https://www.reddit.com/r/QuickBooks/new.rss'
+  'https://www.reddit.com/r/QuickBooks/new.rss',
+  'https://www.reddit.com/r/Accounting/new.rss',
+  'https://www.reddit.com/r/smallbusiness/new.rss'
 ];
 
 // Bank to URL slug mapping for targeted landing page linking
@@ -366,6 +371,8 @@ async function main() {
   const showRecentCount = showRecentIndex !== -1 ? parseInt(args[showRecentIndex + 1], 10) : 0;
   const maxAlertsIndex = args.indexOf('--max');
   const maxAlerts = maxAlertsIndex !== -1 ? parseInt(args[maxAlertsIndex + 1], 10) : 5;
+  const maxAgeIndex = args.indexOf('--max-age');
+  const maxAgeHours = maxAgeIndex !== -1 ? parseFloat(args[maxAgeIndex + 1]) : DEFAULT_MAX_LEAD_AGE_HOURS;
 
   const existingLeads = loadLeadsLog();
   const existingIds = new Set(existingLeads.map(l => l.id || l.url));
@@ -376,7 +383,7 @@ async function main() {
     console.log('[Test Mode] Loading realistic mock test sample threads...');
     rawPosts = getTestSampleLeads();
   } else {
-    console.log(`[Polling] Scanning ${SEARCH_TARGETS.length} high-intent Reddit feeds across Accounting, Bookkeeping & Small Business...`);
+    console.log(`[Polling] Scanning ${SEARCH_TARGETS.length} high-intent Reddit feeds across Accounting, Bookkeeping & Small Business (Max age: ${maxAgeHours}h)...`);
     for (const targetUrl of SEARCH_TARGETS) {
       const items = await fetchFeed(targetUrl);
       if (items.length > 0) {
@@ -408,6 +415,15 @@ async function main() {
   const currentRunMatches = [];
 
   for (const post of uniquePosts) {
+    // Strictly filter out posts older than maxAgeHours (unless test sample)
+    const postDate = new Date(post.published);
+    const postTime = isNaN(postDate.getTime()) ? Date.now() : postDate.getTime();
+    const postAgeHours = (Date.now() - postTime) / (1000 * 60 * 60);
+
+    if (!isTestSample && postAgeHours > maxAgeHours) {
+      continue;
+    }
+
     // Analyze post content for high-intent bookkeeping pain points
     const analysis = analyzePost(post);
     if (!analysis.isMatch) {
@@ -438,7 +454,7 @@ async function main() {
     }
 
     console.log('\n' + '-'.repeat(70));
-    console.log(`🎯 NEW QUALIFIED US ACCOUNTING LEAD FOUND:`);
+    console.log(`🎯 NEW QUALIFIED US ACCOUNTING LEAD FOUND (${postAgeHours.toFixed(1)}h ago):`);
     console.log(`   • Title:     ${leadRecord.title}`);
     console.log(`   • Subreddit: r/${leadRecord.subreddit} (Author: /u/${leadRecord.author})`);
     console.log(`   • URL:       ${leadRecord.url}`);
@@ -472,14 +488,23 @@ async function main() {
   // If no NEW leads were found, but the user requested --show-recent or --force:
   if (newMatchingLeadsCount === 0 && (showRecentCount > 0 || isForce)) {
     const deliveryCount = showRecentCount > 0 ? showRecentCount : 3;
-    const pool = currentRunMatches.length > 0 ? currentRunMatches : existingLeads;
+    // Strictly filter candidates to only those published within the maxAgeHours window
+    const freshExisting = existingLeads.filter(l => {
+      const d = new Date(l.published).getTime();
+      return !isNaN(d) && (Date.now() - d) / (1000 * 60 * 60) <= maxAgeHours;
+    });
+    const pool = currentRunMatches.length > 0 ? currentRunMatches : freshExisting;
     const leadsToShow = pool.slice(0, deliveryCount);
 
-    console.log(`\n[Interactive Mode] Delivering top ${leadsToShow.length} freshest active leads to Telegram...`);
-    for (const lead of leadsToShow) {
-      await sendTelegramAlert(lead);
-      console.log(`   ✓ Delivered active lead: "${lead.title.substring(0, 50)}..."`);
-      await new Promise(r => setTimeout(r, 800));
+    if (leadsToShow.length > 0) {
+      console.log(`\n[Interactive Mode] Delivering top ${leadsToShow.length} freshest active leads (last ${maxAgeHours}h) to Telegram...`);
+      for (const lead of leadsToShow) {
+        await sendTelegramAlert(lead);
+        console.log(`   ✓ Delivered active lead: "${lead.title.substring(0, 50)}..."`);
+        await new Promise(r => setTimeout(r, 800));
+      }
+    } else {
+      console.log(`\n[Interactive Mode] No active leads found within the last ${maxAgeHours} hours. (Zero stale leads delivered)`);
     }
   }
 

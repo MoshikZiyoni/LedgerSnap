@@ -4,7 +4,7 @@ import {
   Search, ShieldCheck, Zap, Lock, Sparkles,
   RefreshCw, DollarSign, BarChart3, ChevronDown, Check,
   BookOpen, X, PieChart, Plus, Trash2, Edit3, Sliders,
-  Eye, Cookie, Cpu, Wrench, FileText
+  Eye, Cookie, Cpu, Wrench, FileText, Laptop, Mail, Share2, Copy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { initializePaddle } from '@paddle/paddle-js';
@@ -182,6 +182,32 @@ export default function App() {
   const [checkoutMessage, setCheckoutMessage] = useState(null);
   const [checkoutError, setCheckoutError] = useState(null);
   const [paddle, setPaddle] = useState(null);
+
+  // Mobile / Workstation Bridge State
+  const [isSendToDesktopOpen, setIsSendToDesktopOpen] = useState(false);
+  const [copyLinkCopied, setCopyLinkCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    try {
+      navigator.clipboard.writeText('https://ledger-snap.com/');
+      setCopyLinkCopied(true);
+      setTimeout(() => setCopyLinkCopied(false), 2500);
+    } catch {
+      // fallback
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: 'LedgerSnap - Bank Statement to QuickBooks (.QBO) Converter',
+          text: 'Convert bank statement PDFs to QuickBooks Online (.QBO) and Excel in 3 seconds with zero manual typing.',
+          url: 'https://ledger-snap.com/'
+        });
+      } catch {}
+    }
+  };
 
   // Initialize Paddle.js
   useEffect(() => {
@@ -1301,6 +1327,66 @@ export default function App() {
         <div className="glass-panel" style={{ padding: '32px', marginBottom: '64px' }}>
           {!conversionData ? (
             <div>
+              {/* Mobile / Workstation Bridge Card */}
+              <div 
+                style={{ 
+                  marginBottom: '20px', 
+                  padding: '16px 20px', 
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.85) 100%)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '240px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+                    <Laptop size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', display: 'block' }}>
+                      On your phone or don't have a PDF right now?
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Test our live Chase demo in 2 seconds or email the link to your work computer.
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => loadSample()}
+                    className="gradient-btn"
+                    style={{ padding: '8px 16px', fontSize: '12px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Sparkles size={14} /> ⚡ Test 2-Sec Live Demo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsSendToDesktopOpen(true)}
+                    style={{ 
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: '#fff',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Mail size={14} /> Send Link to Work PC
+                  </button>
+                </div>
+              </div>
+
               <div 
                 className={`dropzone ${isDragOver ? 'drag-active' : ''}`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
@@ -3393,6 +3479,205 @@ export default function App() {
             </button>
           </div>
         </aside>
+      )}
+
+      {/* Send Link to Work PC / Mobile Bridge Modal */}
+      {isSendToDesktopOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setIsSendToDesktopOpen(false)}
+        >
+          <div 
+            className="glass-panel"
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              padding: '28px',
+              borderRadius: '20px',
+              background: '#0f172a',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.15)',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsSendToDesktopOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: 'none',
+                color: '#94a3b8',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={16} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+                <Laptop size={28} />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>
+                Send to Your Work Computer
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Client statements &amp; QuickBooks are best managed on your desktop. Send this link to yourself now so you can convert in 3 seconds at your desk:
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <a
+                href={`mailto:?subject=${encodeURIComponent('LedgerSnap - Convert PDF Bank Statements to QuickBooks QBO')}&body=${encodeURIComponent('Here is the tool to convert PDF bank statements into QuickBooks (.QBO) and clean Excel spreadsheets with zero manual entry:\n\nhttps://ledger-snap.com/\n\n(First statement is free with zero sign-up).')}`}
+                className="gradient-btn"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  borderRadius: '10px'
+                }}
+              >
+                <Mail size={16} /> Email Me This Link
+              </a>
+
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent('Convert PDF Bank Statements to QuickBooks Online (.QBO) & Excel in 3 seconds: https://ledger-snap.com/')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  borderRadius: '10px',
+                  background: 'rgba(37, 211, 102, 0.15)',
+                  border: '1px solid rgba(37, 211, 102, 0.4)',
+                  color: '#25d366',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>💬</span> Share to My WhatsApp
+              </a>
+
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button
+                  type="button"
+                  onClick={handleNativeShare}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Share2 size={16} /> Open Device Share Menu
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: copyLinkCopied ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.15)',
+                  background: copyLinkCopied ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  color: copyLinkCopied ? '#10b981' : '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <Copy size={16} /> {copyLinkCopied ? '✓ Link Copied to Clipboard!' : 'Copy Website Link'}
+              </button>
+            </div>
+
+            <div style={{ marginTop: '16px', textAlign: 'center', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+                🔒 100% ephemeral in-memory processing • Free statement included
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Sticky Action Bar (Hidden on desktop, sticky on mobile) */}
+      {!conversionData && (
+        <div className="mobile-workstation-bar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#fff', fontWeight: '700' }}>
+              📱 On mobile?
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => loadSample()}
+              className="gradient-btn"
+              style={{ padding: '8px 12px', fontSize: '12px', fontWeight: '700' }}
+            >
+              <Sparkles size={13} /> ⚡ 2s Demo
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSendToDesktopOpen(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                color: '#fff',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Laptop size={13} /> Send to PC
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
