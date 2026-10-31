@@ -1,5 +1,20 @@
 [
   {
+    "id": "t3_1xipntb",
+    "title": "Offsetting Credit Card expense for payment made appears only when reconciling",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1xipntb/offsetting_credit_card_expense_for_payment_made/",
+    "author": "noisydaddy",
+    "subreddit": "QuickBooks",
+    "published": "2026-10-29T17:01:14.000Z",
+    "discoveredAt": "2026-10-31T11:41:43.685Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "For catch-up and historical clean-up bookkeeping, definitely avoid standard CSV mapping. CSV imports frequently cause:\n- Inverted debit/credit signs\n- Inconsistent date formats (MM/DD vs DD/MM) that scramble chronology\n- Zero deduplication protection in QuickBooks\n\nInstead, convert statements into **native Intuit .QBO (OFX 200) Web Connect format**. QuickBooks handles .QBO as an authenticated direct feed: each row receives a unique <FITID> cryptographic transaction hash, which completely stops duplicate transactions from importing across overlapping monthly statement batches.\n\nAlso verify the mathematical checksum (*Opening Balance + Credits - Debits = Closing Balance*) before importing to ensure penny-level accuracy.\n\nFull disclosure: I built a zero-retention PDF-to-QBO web tool at [ledger-snap.com/](https://ledger-snap.com/) that verifies the math checksum and wipes RAM immediately—first statement is free with no card.",
+    "alertSent": true
+  },
+  {
     "id": "https://www.reddit.com/r/QuickBooks/comments/1xdfd18/does_quickbooks_ai_bookkeeping_work_for_accrual/",
     "title": "Does QuickBooks AI bookkeeping work for accrual accounting and customer deposits?",
     "url": "https://www.reddit.com/r/QuickBooks/comments/1xdfd18/does_quickbooks_ai_bookkeeping_work_for_accrual/",
