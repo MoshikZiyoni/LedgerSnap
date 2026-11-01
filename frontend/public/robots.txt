@@ -3,15 +3,39 @@ Allow: /
 
 Sitemap: https://ledger-snap.com/sitemap.xml
 
-# Specialized AI Search Bots for Generative Discovery
+# LLM & Generative Engine Discovery Specifications
+# Reference: https://ledger-snap.com/llms.txt
+# Full Reference: https://ledger-snap.com/llms-full.txt
+
+# OpenAI ChatGPT & ChatGPT Search Engine Crawlers
 User-agent: GPTBot
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Perplexity AI Engine
 User-agent: PerplexityBot
 Allow: /
 
+# Anthropic Claude Crawlers
 User-agent: ClaudeBot
 Allow: /
 
+User-agent: Claude-Web
+Allow: /
+
+# Google Gemini / AI Overviews
 User-agent: Google-Extended
+Allow: /
+
+# Apple Intelligence
+User-agent: Applebot-Extended
+Allow: /
+
+# Meta AI
+User-agent: Meta-ExternalAgent
 Allow: /
