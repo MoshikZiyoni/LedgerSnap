@@ -265,7 +265,7 @@ export default function Footer({ onNavigate }) {
         <div style={{ paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <p style={{ margin: 0, fontSize: '12px' }}>
-              © 2026 LedgerSnap (ledger-snap.com). All rights reserved. Intuit and QuickBooks are registered trademarks of Intuit Inc. Payments processed securely by Paddle.com.
+              © 2026 LedgerSnap (ledger-snap.com). All rights reserved. Intuit and QuickBooks are registered trademarks of Intuit Inc. LedgerSnap is an independent financial technology utility for QuickBooks statement conversion and is not affiliated with Ledger SAS hardware cryptocurrency wallets. Payments processed securely by Paddle.com.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '18px', fontSize: '12px', flexWrap: 'wrap' }}>

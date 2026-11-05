@@ -58,3 +58,4 @@ console.log('1. Cloudflare Pages: Connect your GitHub repo and select root direc
 console.log('2. Vercel: Import repo with root directory `satellites/<id>`');
 console.log('3. Netlify: Drag-and-drop the folder `satellites/<id>` directly for instant live hosting');
 console.log('='.repeat(65));
+
