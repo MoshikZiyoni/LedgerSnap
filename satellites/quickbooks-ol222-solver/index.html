@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Fix QuickBooks Web Connect Error OL-222 & OL-301 (Complete Fix)</title>
+  <meta name="description" content="Encountering QuickBooks Error OL-222 or OL-301 when importing .QBO files? Here is the exact technical cause and how to repair invalid INTU.BID tags and OFX headers.">
+  <link rel="canonical" href="https://quickbooks-error-ol222.pages.dev/">
+  <meta property="og:title" content="How to Fix QuickBooks Error OL-222 & OL-301 (Complete Fix)">
+  <meta property="og:description" content="Technical guide for accountants: Why QuickBooks rejects .QBO Web Connect files and how to validate your files.">
+  <meta property="og:type" content="article">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #141c2e;
+      --border: #232f48;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --red: #f43f5e;
+      --green: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0 16px;
+    }
+    .container { max-width: 860px; margin: 0 auto; padding: 48px 0; }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--red);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    h1 { font-size: 32px; font-weight: 800; margin-bottom: 16px; line-height: 1.25; }
+    p.lead { font-size: 18px; color: var(--muted); margin-bottom: 28px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+    code { background: rgba(0, 0, 0, 0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #38bdf8; }
+    pre { background: #060911; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; font-size: 13px; color: #a5f3fc; border: 1px solid var(--border); }
+    .solution { border: 2px solid var(--green); background: rgba(16, 185, 129, 0.05); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      margin-top: 12px;
+    }
+    a.link { color: var(--accent); text-decoration: underline; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">⚠️ Intuit QuickBooks Troubleshooting Documentation</div>
+    <h1>How to Fix QuickBooks Web Connect Error OL-222 & OL-301</h1>
+    <p class="lead">"QuickBooks was not able to complete your request. Please contact your financial institution..." Here is the exact technical reason your .QBO file failed, and the 1-click fix.</p>
+
+    <div class="card">
+      <h2>The 4 Technical Root Causes of Error OL-222</h2>
+      <p>QuickBooks Desktop (Pro, Premier, Enterprise) and QuickBooks Online enforce strict validation against Intuit's Open Financial Exchange (OFX) specification. The error occurs when:</p>
+      <ol style="margin: 16px 0 16px 20px;">
+        <li style="margin-bottom: 10px;"><strong>Missing or Discontinued &lt;INTU.BID&gt; Tag:</strong> QuickBooks checks whether the bank's Financial Institution ID is in its certified registry. If the tag is missing or references a discontinued code, QuickBooks aborts the import immediately.</li>
+        <li style="margin-bottom: 10px;"><strong>Unescaped XML Special Characters:</strong> Payee descriptions containing raw ampersands (e.g. <code>AT&T</code> instead of <code>AT&amp;T</code>) corrupt the SGML parser.</li>
+        <li style="margin-bottom: 10px;"><strong>Payee Description Exceeding 32 Characters:</strong> The OFX specification limits the <code>&lt;NAME&gt;</code> field to 32 characters max. Raw bank statement dumps that overflow this limit trigger Error OL-222.</li>
+        <li style="margin-bottom: 10px;"><strong>Missing &lt;FI&gt; Institution Block:</strong> QuickBooks Desktop requires an opening <code>&lt;FI&gt;&lt;ORG&gt;...&lt;/ORG&gt;&lt;FID&gt;...&lt;/FID&gt;&lt;/FI&gt;</code> block directly above the bank ID.</li>
+      </ol>
+    </div>
+
+    <div class="card solution">
+      <h2>✅ The Automated 1-Click Fix</h2>
+      <p>Instead of manually editing raw text code in Notepad, you can use the certified conversion pipeline at <a class="link" href="https://ledger-snap.com/">LedgerSnap (ledger-snap.com)</a>.</p>
+      <p style="margin-top: 8px;">LedgerSnap automatically parses raw bank statement PDFs, sanitizes special characters, truncates <code>&lt;NAME&gt;</code> tags into valid 32-character payee strings, moves raw details into <code>&lt;MEMO&gt;</code>, and injects certified active Intuit bank IDs (e.g. Chase BID 10898, Wells Fargo BID 3000, Bank of America BID 6812).</p>
+      <a href="https://ledger-snap.com/guides/fix-quickbooks-web-connect-error-ol-222-ol-301" class="btn">Read Complete Technical Repair Guide on LedgerSnap →</a>
+    </div>
+
+    <div class="card">
+      <h2>Compliant OFX Header Template</h2>
+      <pre>OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+SECURITY:NONE
+ENCODING:UTF-8
+CHARSET:NONE
+COMPRESSION:NONE
+OLDFILEUID:NONE
+NEWFILEUID:NONE
+
+&lt;OFX&gt;
+&lt;SIGNONMSGSRSV1&gt;
+&lt;SONRS&gt;
+&lt;STATUS&gt;
+&lt;CODE&gt;0
+&lt;SEVERITY&gt;INFO
+&lt;/STATUS&gt;
+&lt;DTSERVER&gt;20261105120000[0:GMT]
+&lt;LANGUAGE&gt;ENG
+&lt;FI&gt;
+&lt;ORG&gt;JPMorgan Chase Bank
+&lt;FID&gt;10898
+&lt;/FI&gt;
+&lt;INTU.BID&gt;10898
+&lt;/SONRS&gt;
+&lt;/SIGNONMSGSRSV1&gt;</pre>
+      <p style="font-size: 14px; color: var(--muted); margin-top: 10px;">To convert any bank PDF directly into this validated structure, visit <a class="link" href="https://ledger-snap.com/">LedgerSnap</a>.</p>
+    </div>
+  </div>
+</body>
+</html>
