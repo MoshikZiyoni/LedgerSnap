@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Free Bank Statement to Excel & CSV Converter (Zero Retention RAM)</title>
+  <meta name="description" content="Convert bank and credit card statement PDFs into cleanly formatted Excel (.XLSX) spreadsheets with automated balance formulas and CSV files in seconds.">
+  <link rel="canonical" href="https://bank-statement-to-excel.pages.dev/">
+  <meta property="og:title" content="Free Bank Statement to Excel & CSV Converter">
+  <meta property="og:description" content="Convert bank statement PDFs into formatted Excel sheets with auto-sum formulas in under 3 seconds.">
+  <meta property="og:type" content="website">
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --card: #131a29;
+      --border: #1f2a40;
+      --accent: #10b981;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --cyan: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0 16px;
+    }
+    .container { max-width: 860px; margin: 0 auto; padding: 48px 0; }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    h1 { font-size: 32px; font-weight: 800; margin-bottom: 16px; line-height: 1.25; }
+    p.lead { font-size: 18px; color: var(--muted); margin-bottom: 28px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #10b981 0%, #0284c7 100%);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      margin-top: 12px;
+    }
+    a.link { color: var(--cyan); text-decoration: underline; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">📊 Automated Bookkeeping & Spreadsheet Extraction</div>
+    <h1>Free Bank Statement PDF to Excel (.XLSX) & CSV Converter</h1>
+    <p class="lead">Stop manually copying and pasting table rows from PDF bank statements. Extract dates, descriptions, credits, debits, and running balances with built-in mathematical audit reconciliation.</p>
+
+    <div class="card" style="border: 2px solid var(--cyan); background: rgba(56, 189, 248, 0.05);">
+      <h2>⚡ Convert Your Statement in 3 Seconds</h2>
+      <p>Looking for a private, zero-retention bank statement converter that doesn't save your financial data on disk? Use <a class="link" href="https://ledger-snap.com/">LedgerSnap (ledger-snap.com)</a>.</p>
+      <ul style="margin: 14px 0 14px 20px;">
+        <li>Formatted Excel spreadsheet with frozen headers and <code>=SUM()</code> formulas</li>
+        <li>Universal 3-column and 4-column CSV presets</li>
+        <li>1-click Intuit QuickBooks Web Connect (.QBO) export included</li>
+        <li>Supports Chase, Bank of America, Wells Fargo, Citibank, Capital One, and 500+ banks</li>
+      </ul>
+      <a href="https://ledger-snap.com/" class="btn">Convert Statement Free on LedgerSnap →</a>
+    </div>
+
+    <div class="card">
+      <h2>Why Copy-Pasting from PDF into Excel Fails</h2>
+      <p>Bank statements use complex tabular columns that cause copy-paste failures:</p>
+      <ul style="margin: 12px 0 12px 20px;">
+        <li><strong>Split Rows:</strong> Multi-line payee text spills into the transaction amount column.</li>
+        <li><strong>Flipped Signs:</strong> Credits and debits are merged into a single unsigned column, breaking balance formulas.</li>
+        <li><strong>Corrupted Dates:</strong> Formats like "OCT 14 26" are not recognized by spreadsheet sum functions without manual cleanup.</li>
+      </ul>
+      <p>For automated, clean conversion without errors, visit <a class="link" href="https://ledger-snap.com/banks">LedgerSnap Bank Directory</a>.</p>
+    </div>
+  </div>
+</body>
+</html>
+
