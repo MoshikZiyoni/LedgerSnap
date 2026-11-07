@@ -1,5 +1,21 @@
 [
   {
+    "id": "https://www.reddit.com/r/QuickBooks/comments/1xpa92v/how_do_you_stop_unmatched_bank_lines_from/",
+    "title": "How do you stop unmatched bank lines from lingering past month-end?",
+    "url": "https://www.reddit.com/r/QuickBooks/comments/1xpa92v/how_do_you_stop_unmatched_bank_lines_from/",
+    "author": "reddit_user",
+    "subreddit": "QuickBooks",
+    "published": "2026-11-06T11:12:27.000Z",
+    "discoveredAt": "2026-11-07T12:28:25.465Z",
+    "matchedPains": [
+      "Catch-up / Clean-up Bookkeeping & Backlog",
+      "QuickBooks Web Connect / Bank Feed Errors (OL-222 / 324 / 106)"
+    ],
+    "targetUrl": "https://ledger-snap.com/",
+    "draft": "QuickBooks Web Connect errors (like OL-222, OL-301, or bank feed sync drops) usually happen because of one of two issues in the file header:\n1. **Invalid INTU.BID tag**: QuickBooks Desktop and Online require an authorized Financial Institution ID tag (<INTU.BID>3000</INTU.BID> or the certified bank FID). If Intuit doesn't recognize the FID, it halts the import immediately.\n2. **Unescaped characters in payee text**: Ampersands (&) or special symbols in transaction descriptions without proper XML entity escaping (e.g., \"AT&T\" instead of \"AT&amp;T\") corrupt the OFX 200 XML parser.\n\nYou can open the .QBO file in VS Code or Notepad to verify the <OFXHEADER>200</OFXHEADER> and check that every <STMTTRN> has valid opening/closing tags.\n\n*(Disclosure: Developer of LedgerSnap here—we process bank PDFs purely in ephemeral volatile RAM and output clean .QBO and Excel with formulas. If you want to test your statement layout, search LedgerSnap on Google for the free test).*",
+    "alertSent": true
+  },
+  {
     "id": "https://www.reddit.com/r/QuickBooks/comments/1xdfd18/does_quickbooks_ai_bookkeeping_work_for_accrual/",
     "title": "Does QuickBooks AI bookkeeping work for accrual accounting and customer deposits?",
     "url": "https://www.reddit.com/r/QuickBooks/comments/1xdfd18/does_quickbooks_ai_bookkeeping_work_for_accrual/",
