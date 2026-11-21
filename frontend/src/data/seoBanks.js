@@ -54,6 +54,7 @@ export const US_INSTITUTIONS = [
   },
   {
     id: 'citi',
+    extraAliases: ['citibank-pdf-to-qbo'],
     name: 'Citibank',
     fullName: 'Citibank, N.A.',
     org: 'Citibank',
@@ -86,6 +87,7 @@ export const US_INSTITUTIONS = [
   },
   {
     id: 'amex',
+    extraAliases: ['american-express-pdf-to-qbo'],
     name: 'American Express',
     fullName: 'American Express Company',
     org: 'AMEX',
@@ -118,6 +120,7 @@ export const US_INSTITUTIONS = [
   },
   {
     id: 'pnc',
+    extraAliases: ['pnc-bank-pdf-to-qbo'],
     name: 'PNC Bank',
     fullName: 'PNC Bank, National Association',
     org: 'PNC Bank',
@@ -150,6 +153,7 @@ export const US_INSTITUTIONS = [
   },
   {
     id: 'truist',
+    extraAliases: ['truist-bank-pdf-to-qbo'],
     name: 'Truist',
     fullName: 'Truist Financial Corporation (BB&T and SunTrust)',
     org: 'Truist',
@@ -310,6 +314,7 @@ export const US_INSTITUTIONS = [
   },
   {
     id: 'mercury',
+    extraAliases: ['mercury-bank-pdf-to-qbo'],
     name: 'Mercury',
     fullName: 'Mercury Technologies (Evolve Bank / Choice Financial)',
     org: 'JPMorgan Chase Bank',
@@ -518,6 +523,7 @@ export const US_INSTITUTIONS = [
   },
   {
     id: 'first-citizens',
+    extraAliases: ['silicon-valley-bank-pdf-to-qbo'],
     name: 'First Citizens Bank',
     fullName: 'First Citizens Bank & Trust Company (including Silicon Valley Bank / SVB)',
     org: 'First Citizens Bank',
@@ -646,14 +652,133 @@ export const US_INSTITUTIONS = [
   }
 ];
 
+export const ISRAELI_INSTITUTIONS = [
+  {
+    id: 'bank-hapoalim',
+    region: 'IL',
+    currency: 'ILS',
+    name: 'Bank Hapoalim (בנק הפועלים)',
+    fullName: 'Bank Hapoalim B.M. (בנק הפועלים בע"מ)',
+    org: 'Bank Hapoalim',
+    fid: '3000',
+    bid: '3000',
+    routing: '12',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: 'Manual Only',
+    directFeedLimitNotice: 'QuickBooks Online & US accounting feeds do not reliably sync Israeli ILS bank feeds natively. Convert Bank Hapoalim Hebrew/English PDF statements directly to .QBO, Excel, and Hashavshevet.',
+    painPoint: 'Hebrew RTL descriptions, DD/MM/YYYY Israeli date formats, OSh checking & Masav transfers',
+    dateFormatExample: 'DD/MM/YYYY (e.g. 16/10/2026)',
+    checkNumPattern: 'Asmachta / אסמכתא 40192',
+    keywords: ['HAPOALIM', 'POALIM', 'הפועלים', 'בנק הפועלים']
+  },
+  {
+    id: 'bank-leumi',
+    region: 'IL',
+    currency: 'ILS',
+    name: 'Bank Leumi (בנק לאומי)',
+    fullName: 'Bank Leumi le-Israel B.M. (בנק לאומי לישראל)',
+    org: 'Bank Leumi',
+    fid: '3000',
+    bid: '3000',
+    routing: '10',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: 'Manual Only',
+    directFeedLimitNotice: 'Exporting Leumi OSh business & personal PDF statements to QuickBooks requires reversing RTL columns and normalizing DD/MM/YYYY dates. LedgerSnap automates both into certified .QBO and Hashavshevet files.',
+    painPoint: 'Reversed Hebrew RTL PDF text extraction, split Chova/Zchut columns, and ILS/USD multi-currency rows',
+    dateFormatExample: 'DD/MM/YYYY (e.g. 16/10/2026)',
+    checkNumPattern: 'Asmachta / אסמכתא 88210',
+    keywords: ['LEUMI', 'לאומי', 'בנק לאומי']
+  },
+  {
+    id: 'discount-bank',
+    region: 'IL',
+    currency: 'ILS',
+    name: 'Discount Bank (בנק דיסקונט)',
+    fullName: 'Israel Discount Bank Ltd. (בנק דיסקונט לישראל)',
+    org: 'Discount Bank',
+    fid: '3000',
+    bid: '3000',
+    routing: '11',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: 'Manual Only',
+    directFeedLimitNotice: 'Convert Israel Discount Bank PDF checking and foreign-currency statements into QuickBooks Web Connect (.QBO), CSV, and Hashavshevet Excel/DAT without Hebrew encoding gibberish.',
+    painPoint: 'Windows-1255 Hebrew encoding artifacts, DD/MM/YYYY date swaps, and multi-line Masav payroll entries',
+    dateFormatExample: 'DD/MM/YYYY (e.g. 16/10/2026)',
+    checkNumPattern: 'Asmachta / אסמכתא 55102',
+    keywords: ['DISCOUNT', 'דיסקונט', 'בנק דיסקונט']
+  },
+  {
+    id: 'mizrahi-tefahot',
+    region: 'IL',
+    currency: 'ILS',
+    name: 'Mizrahi-Tefahot (מזרחי טפחות)',
+    fullName: 'Bank Mizrahi-Tefahot Ltd. (בנק מזרחי טפחות)',
+    org: 'Mizrahi-Tefahot',
+    fid: '3000',
+    bid: '3000',
+    routing: '20',
+    accountTypeDefault: 'CHECKING',
+    directFeedLimit: 'Manual Only',
+    directFeedLimitNotice: 'Convert Mizrahi-Tefahot business and mortgage checking PDFs into clean QuickBooks .QBO, Excel, and Hashavshevet-ready formats in seconds.',
+    painPoint: 'Hebrew right-to-left table layouts, standing orders (Horaat Keva), and foreign exchange transfers',
+    dateFormatExample: 'DD/MM/YYYY (e.g. 16/10/2026)',
+    checkNumPattern: 'Asmachta / אסמכתא 31904',
+    keywords: ['MIZRAHI', 'TEFAHOT', 'מזרחי', 'מזרחי טפחות']
+  },
+  {
+    id: 'isracard-max-cal',
+    region: 'IL',
+    currency: 'ILS',
+    name: 'Isracard / Max / CAL (ויזה כאל)',
+    fullName: 'Israeli Credit Cards — Isracard, Max (Leumi Card) & CAL',
+    org: 'Israeli Credit Card',
+    fid: '3000',
+    bid: '3000',
+    routing: '000000000',
+    accountTypeDefault: 'CREDITLINE',
+    directFeedLimit: 'Manual Only',
+    directFeedLimitNotice: 'Convert monthly Isracard, Max, Amex Israel, and CAL credit card PDF billing statements into QuickBooks .QBO and Hashavshevet with installment (Tashlumim) and FX amounts properly structured.',
+    painPoint: 'Israeli monthly credit card Tashlumim (installments), Hebrew merchant names, and USD/EUR abroad charges',
+    dateFormatExample: 'DD/MM/YYYY (e.g. 16/10/2026)',
+    checkNumPattern: 'Voucher / שובר 7402',
+    keywords: ['ISRACARD', 'MAX', 'CAL', 'VISA CAL', 'ישראכרט', 'מקס', 'כאל']
+  }
+];
+
+export const ALL_INSTITUTIONS = [...US_INSTITUTIONS, ...ISRAELI_INSTITUTIONS];
+
 function generateBankLandingConfig(inst) {
   const isCreditCard = inst.accountTypeDefault === 'CREDITLINE';
+  const isIsraeli = inst.region === 'IL';
   const slugStatementToQbo = `${inst.id}-statement-to-qbo`;
   const slugPdfToQbo = `${inst.id}-pdf-to-qbo`;
   const slugPdfToQboOnline = `${inst.id}-pdf-to-quickbooks-online`;
   const slugPdfToCsv = `${inst.id}-pdf-to-csv`;
+  const mergedAliases = Array.from(new Set([
+    slugPdfToQbo,
+    slugPdfToQboOnline,
+    slugPdfToCsv,
+    ...(inst.extraAliases || [])
+  ]));
 
-  const faqs = [
+  const faqs = isIsraeli ? [
+    {
+      q: `How does LedgerSnap fix Hebrew RTL text and DD/MM/YYYY dates from ${inst.name}?`,
+      a: `Israeli bank PDFs frequently encode Hebrew backwards and format dates as DD/MM/YYYY, which causes QuickBooks and Excel to swap days and months. LedgerSnap reverses visual RTL Hebrew strings cleanly, normalizes every date to QuickBooks ISO Web Connect timestamps, and preserves full UTF-8 / Windows-1255 Hashavshevet compatibility.`
+    },
+    {
+      q: `Can I export ${inst.name} statements for both QuickBooks Online and Hashavshevet (חשבשבת)?`,
+      a: `Yes. After parsing your ${inst.name} PDF in ephemeral RAM, you can download an Intuit .QBO Web Connect file (with ILS/USD currency support), a standard Excel .XLSX workbook, or native Hashavshevet (.XLSX / .CSV / .DAT movein) files.`
+    },
+    {
+      q: `Will QuickBooks accept an Israeli ILS (₪) .QBO file from ${inst.name}?`,
+      a: `Yes. LedgerSnap sets <CURDEF>ILS</CURDEF> (or USD/EUR for FX accounts) alongside a universal QuickBooks-compatible <INTU.BID>${inst.bid}</INTU.BID> header so QuickBooks Online and Desktop US/IL subsidiaries import the Web Connect file cleanly without OL-222 errors.`
+    },
+    {
+      q: `Are my ${inst.name} financial statements stored on your servers?`,
+      a: `Never. Your statement is processed strictly in volatile RAM and expires automatically—zero disk writes, zero database storage of transactions, and zero AI model training on your financial records.`
+    }
+  ] : [
     {
       q: `Why can’t I download historical statements older than 90 days from ${inst.name} into QuickBooks?`,
       a: `Intuit Bank Feeds limit automatic direct-connect syncing to between 30 and 90 days for ${inst.name}. For prior quarters or tax-season catch-up bookkeeping, ${inst.name} only offers PDF statements. LedgerSnap turns those PDF statements into certified Intuit Web Connect (.QBO) files with valid <INTU.BID>${inst.bid}</INTU.BID> headers that import with 1-click.`
@@ -678,8 +803,10 @@ function generateBankLandingConfig(inst) {
 
   return {
     id: inst.id,
+    region: inst.region || 'US',
+    currency: inst.currency || 'USD',
     slug: slugStatementToQbo,
-    aliases: [slugPdfToQbo, slugPdfToQboOnline, slugPdfToCsv],
+    aliases: mergedAliases,
     name: inst.name,
     fullName: inst.fullName,
     org: inst.org,
@@ -692,11 +819,22 @@ function generateBankLandingConfig(inst) {
     painPoint: inst.painPoint,
     dateFormatExample: inst.dateFormatExample,
     checkNumPattern: inst.checkNumPattern,
-    metaTitle: `Convert ${inst.name} Statement PDF to QuickBooks (.QBO) & Excel | LedgerSnap`,
-    metaDescription: `Convert ${inst.name} PDF bank and credit card statements into certified QuickBooks Online (.QBO), Desktop Web Connect, and Excel. 100% balance reconciliation.`,
+    metaTitle: isIsraeli
+      ? `Convert ${inst.name} PDF Statement to QuickBooks (.QBO), Excel & Hashavshevet | LedgerSnap`
+      : `Convert ${inst.name} Statement PDF to QuickBooks (.QBO) & Excel | LedgerSnap`,
+    metaDescription: isIsraeli
+      ? `Convert ${inst.name} Hebrew & English PDF bank statements to QuickBooks (.QBO), Excel, and Hashavshevet (.DAT/.CSV). Fixes RTL Hebrew text and DD/MM/YYYY dates automatically.`
+      : `Convert ${inst.name} PDF bank and credit card statements into certified QuickBooks Online (.QBO), Desktop Web Connect, and Excel. 100% balance reconciliation.`,
     heroH1: `Convert ${inst.name} PDF Statements to QuickBooks (.QBO) & Excel in Seconds`,
-    heroSub: `Import historical ${inst.name} statements beyond the 90-day bank feed limit. Converts multi-page checking, savings, and card statements into certified Intuit Web Connect (.QBO) files with zero column mapping errors.`,
-    features: [
+    heroSub: isIsraeli
+      ? `Built for Israeli accountants, CPA firms, and US/IL subsidiaries. Extracts Hebrew RTL text & Chova/Zchut columns from ${inst.name} PDFs into certified QuickBooks (.QBO), Excel, and Hashavshevet formats.`
+      : `Import historical ${inst.name} statements beyond the 90-day bank feed limit. Converts multi-page checking, savings, and card statements into certified Intuit Web Connect (.QBO) files with zero column mapping errors.`,
+    features: isIsraeli ? [
+      `Automatic Hebrew RTL text direction normalization & Windows-1255 Hashavshevet support`,
+      `Normalizes Israeli DD/MM/YYYY statement dates to QuickBooks ISO timestamps`,
+      `Exports directly to Intuit .QBO (ILS/USD), Excel .XLSX, and Hashavshevet (.CSV / .DAT)`,
+      `Automated penny/agora-level mathematical reconciliation (Opening + Credits - Debits = Closing Balance)`
+    ] : [
       `Bypasses the ${inst.name} 90-day historical download limitation in QuickBooks`,
       `Certified ${inst.name} Intuit FID block (<INTU.BID>${inst.bid}</INTU.BID>) prevents Error OL-222`,
       `Extracts embedded check numbers and check image sub-tables accurately`,
@@ -713,27 +851,29 @@ function generateBankLandingConfig(inst) {
         {
           num: 2,
           title: `Instant In-Memory Balance Reconciliation`,
-          desc: `LedgerSnap verifies that Opening Balance + Credits - Debits matches Closing Balance to the exact penny.`
+          desc: `LedgerSnap verifies that Opening Balance + Credits - Debits matches Closing Balance to the exact ${isIsraeli ? 'agora/penny' : 'penny'}.`
         },
         {
           num: 3,
-          title: `Import Direct to QuickBooks`,
-          desc: `Download your certified .QBO file. In QuickBooks Online, click Banking > Upload from file, and match it to your ${inst.name} account.`
+          title: isIsraeli ? `Export to QuickBooks .QBO, Excel, or Hashavshevet` : `Import Direct to QuickBooks`,
+          desc: isIsraeli
+            ? `Download a validated .QBO file (ILS or USD), Excel workbook, or Hashavshevet movein file and import cleanly without Hebrew encoding errors.`
+            : `Download your certified .QBO file. In QuickBooks Online, click Banking > Upload from file, and match it to your ${inst.name} account.`
         }
       ]
     },
     mappingPreview: [
-      { field: 'Date', raw: inst.dateFormatExample, qboTag: '<DTPOSTED>20261016120000[0:GMT]', qbBehavior: 'Preserved at Noon GMT so US timezones never shift transaction calendar day' },
-      { field: 'Check Number', raw: inst.checkNumPattern, qboTag: isCreditCard ? 'N/A' : '<CHECKNUM>1042', qbBehavior: 'Maps to QuickBooks Check # column' },
+      { field: 'Date', raw: inst.dateFormatExample, qboTag: '<DTPOSTED>20261016120000[0:GMT]', qbBehavior: 'Preserved at Noon GMT so timezones never shift transaction calendar day' },
+      { field: isIsraeli ? 'Reference / Asmachta' : 'Check Number', raw: inst.checkNumPattern, qboTag: isCreditCard ? 'N/A' : '<CHECKNUM>1042', qbBehavior: isIsraeli ? 'Maps reference/voucher number cleanly' : 'Maps to QuickBooks Check # column' },
       { field: 'Institution ID', raw: `${inst.name} (<INTU.BID>${inst.bid})`, qboTag: `<FI><ORG>${inst.org}</ORG><FID>${inst.fid}</FID></FI><INTU.BID>${inst.bid}</INTU.BID>`, qbBehavior: 'Eliminates QuickBooks Web Connect Error OL-222 & OL-301' },
-      { field: 'Payee / Description', raw: 'POS DEBIT VISA *4412 AMZN Mktp US*...', qboTag: '<NAME>Amazon Marketplace', qbBehavior: 'Clean 32-char payee inside <NAME>, full raw bank string in <MEMO>' },
+      { field: 'Payee / Description', raw: isIsraeli ? 'העברה בנקאית / תשלום ספקים' : 'POS DEBIT VISA *4412 AMZN Mktp US*...', qboTag: isIsraeli ? '<NAME>Vendor / Supplier Transfer' : '<NAME>Amazon Marketplace', qbBehavior: 'Clean 32-char payee inside <NAME>, full raw bank string in <MEMO>' },
       { field: 'Sign Convention', raw: isCreditCard ? 'Charge listed positive on PDF' : 'Withdrawal listed in Debit column', qboTag: isCreditCard ? '<TRNAMT>-85.00 (DEBIT)' : '<TRNAMT>-85.00 (DEBIT)', qbBehavior: 'Strict Intuit liability rules: purchases are negative, payments positive' }
     ],
     faqs
   };
 }
 
-export const SEO_BANKS = US_INSTITUTIONS.map(generateBankLandingConfig);
+export const SEO_BANKS = ALL_INSTITUTIONS.map(generateBankLandingConfig);
 
 export function findBankBySlug(slug = '') {
   const clean = String(slug || '').trim().replace(/\/$/, '').toLowerCase();

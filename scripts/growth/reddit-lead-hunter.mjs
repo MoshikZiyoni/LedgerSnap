@@ -76,41 +76,47 @@ const SEARCH_TARGETS = [
   'https://www.reddit.com/r/smallbusiness/new.rss'
 ];
 
-// Bank to URL slug mapping for targeted landing page linking
+// Bank to canonical URL slug mapping for targeted landing page linking
 const BANK_SLUG_MAP = [
-  { keywords: ['chase', 'jpmorgan'], slug: 'chase-pdf-to-qbo', name: 'Chase' },
-  { keywords: ['bofa', 'bank of america', 'boa'], slug: 'bank-of-america-pdf-to-qbo', name: 'Bank of America' },
-  { keywords: ['wells fargo', 'wellsfargo', 'wells'], slug: 'wells-fargo-pdf-to-qbo', name: 'Wells Fargo' },
-  { keywords: ['citi', 'citibank'], slug: 'citibank-pdf-to-qbo', name: 'Citibank' },
-  { keywords: ['capital one', 'cap one', 'capitalone'], slug: 'capital-one-pdf-to-qbo', name: 'Capital One' },
-  { keywords: ['amex', 'american express'], slug: 'american-express-pdf-to-qbo', name: 'American Express' },
-  { keywords: ['mercury', 'mercury bank'], slug: 'mercury-bank-pdf-to-qbo', name: 'Mercury' },
-  { keywords: ['td bank', 'toronto-dominion'], slug: 'td-bank-pdf-to-qbo', name: 'TD Bank' },
-  { keywords: ['pnc', 'pnc bank'], slug: 'pnc-bank-pdf-to-qbo', name: 'PNC Bank' },
-  { keywords: ['us bank', 'u.s. bank'], slug: 'us-bank-pdf-to-qbo', name: 'U.S. Bank' }
+  { keywords: ['chase', 'jpmorgan'], slug: 'chase-statement-to-qbo', name: 'Chase' },
+  { keywords: ['bofa', 'bank of america', 'boa'], slug: 'bank-of-america-statement-to-qbo', name: 'Bank of America' },
+  { keywords: ['wells fargo', 'wellsfargo', 'wells'], slug: 'wells-fargo-statement-to-qbo', name: 'Wells Fargo' },
+  { keywords: ['citi', 'citibank'], slug: 'citi-statement-to-qbo', name: 'Citibank' },
+  { keywords: ['capital one', 'cap one', 'capitalone'], slug: 'capital-one-statement-to-qbo', name: 'Capital One' },
+  { keywords: ['amex', 'american express'], slug: 'amex-statement-to-qbo', name: 'American Express' },
+  { keywords: ['mercury', 'mercury bank'], slug: 'mercury-statement-to-qbo', name: 'Mercury' },
+  { keywords: ['td bank', 'toronto-dominion'], slug: 'td-bank-statement-to-qbo', name: 'TD Bank' },
+  { keywords: ['pnc', 'pnc bank'], slug: 'pnc-statement-to-qbo', name: 'PNC Bank' },
+  { keywords: ['us bank', 'u.s. bank'], slug: 'us-bank-statement-to-qbo', name: 'U.S. Bank' },
+  { keywords: ['hapoalim', 'poalim'], slug: 'bank-hapoalim-statement-to-qbo', name: 'Bank Hapoalim' },
+  { keywords: ['leumi'], slug: 'bank-leumi-statement-to-qbo', name: 'Bank Leumi' },
+  { keywords: ['discount bank'], slug: 'discount-bank-statement-to-qbo', name: 'Discount Bank' },
+  { keywords: ['mizrahi', 'tefahot'], slug: 'mizrahi-tefahot-statement-to-qbo', name: 'Mizrahi-Tefahot' },
+  { keywords: ['isracard', 'visa cal'], slug: 'isracard-max-cal-statement-to-qbo', name: 'Isracard / Max / CAL' }
 ];
 
-// Pain point taxonomy (flexible regex that catches multi-word patterns in any order)
+// Pain point taxonomy (requires explicit accounting / bookkeeping / banking context)
 const PAIN_PATTERNS = [
   {
     category: 'PDF to QuickBooks / QBO / CSV Conversion',
     test: (text) => {
       const t = text.toLowerCase();
+      const hasStatement = t.includes('bank statement') || t.includes('credit card statement') || t.includes('statement');
       const hasPdf = t.includes('pdf');
-      const hasStatement = t.includes('statement');
-      const hasQb = t.includes('quickbooks') || t.includes('qbo') || t.includes('qbd') || t.includes('excel') || t.includes('csv');
+      const hasQb = t.includes('quickbooks') || t.includes('qbo') || t.includes('qbd');
       const hasAction = t.includes('convert') || t.includes('import') || t.includes('transcribe') || t.includes('extract') || t.includes('enter') || t.includes('mapping');
-      return (hasPdf && hasStatement) || (hasStatement && hasQb && hasAction) || (hasPdf && hasQb);
+      return (hasPdf && hasStatement && (hasQb || hasAction || t.includes('bank') || t.includes('bookkeep') || t.includes('excel') || t.includes('csv'))) || (hasStatement && hasQb && hasAction) || (hasPdf && hasQb && hasAction);
     }
   },
   {
     category: 'Catch-up / Clean-up Bookkeeping & Backlog',
     test: (text) => {
       const t = text.toLowerCase();
-      return t.includes('catch-up') || t.includes('catch up') || t.includes('clean-up') || 
-             t.includes('cleanup') || t.includes('backlog') || t.includes('months of statement') || 
-             t.includes('reconcil') || t.includes('beginning balance') || t.includes('opening balance') ||
-             t.includes('historical statement') || t.includes('old statement');
+      const hasAccountingCtx = t.includes('quickbooks') || t.includes('qbo') || t.includes('bookkeep') || t.includes('bank statement') || t.includes('client') || t.includes('ledger') || t.includes('account');
+      const hasBacklog = t.includes('catch-up') || t.includes('catch up') || t.includes('clean-up') ||
+             t.includes('cleanup') || t.includes('backlog') || t.includes('months of statement') ||
+             t.includes('historical statement') || t.includes('old statement') || t.includes('90 days') || t.includes('90-day');
+      return hasAccountingCtx && hasBacklog;
     }
   },
   {
@@ -251,11 +257,11 @@ export function analyzePost(post) {
   // Target conversion link
   let targetUrl = 'https://ledger-snap.com/';
   if (isOl222) {
-    targetUrl = 'https://ledger-snap.com/guides/how-to-fix-quickbooks-web-connect-error-ol-222';
+    targetUrl = 'https://ledger-snap.com/guides/fix-quickbooks-web-connect-error-ol-222-ol-301';
   } else if (isDocuclipper) {
-    targetUrl = 'https://ledger-snap.com/compare/ledgersnap-vs-docuclipper';
+    targetUrl = 'https://ledger-snap.com/compare/docuclipper-alternative';
   } else if (isMoneythumb) {
-    targetUrl = 'https://ledger-snap.com/compare/ledgersnap-vs-moneythumb';
+    targetUrl = 'https://ledger-snap.com/compare/moneythumb-alternative';
   } else if (matchedBank) {
     targetUrl = `https://ledger-snap.com/convert/${matchedBank.slug}`;
   }
@@ -308,10 +314,10 @@ Crucial tip: Make sure your conversion verifies the penny-level balance checksum
   // Anti-Ban Varied Disclosures: Rotates between natural brand mentions without repetitive markdown links,
   // completely preventing Reddit AutoMod fingerprinting and spam-filter shadowbans.
   const antiBanDisclosures = [
-    `*(Disclosure: I'm the developer behind LedgerSnap, a web-based PDF-to-QBO converter. Built it specifically to solve this bank feed cutoff headache with in-memory balance reconciliation—feel free to Google LedgerSnap or DM if you run into any parsing issues).*`,
-    `*(Context: Built a zero-retention tool called LedgerSnap that handles this in-memory conversion without storing bank data. You get 1 statement free to test if you'd like to check how it maps your bank's register).*`,
-    `*(I actually ended up building a tool for this called LedgerSnap that generates certified .QBO Web Connect files with INTU.BID headers. Happy to answer any formatting questions if you're writing a custom parser).*`,
-    `*(Disclosure: Developer of LedgerSnap here—we process bank PDFs purely in ephemeral volatile RAM and output clean .QBO and Excel with formulas. If you want to test your statement layout, search LedgerSnap on Google for the free test).*`
+    `*(Disclosure: I'm the developer behind ledger-snap.com, a web-based PDF-to-QBO converter. Built it specifically to solve this bank feed cutoff headache with in-memory balance reconciliation—feel free to check ledger-snap.com or DM if you run into any parsing issues).*`,
+    `*(Context: Built a zero-retention tool at ledger-snap.com that handles this in-memory conversion without storing bank data. You get 1 statement free to test if you'd like to check how it maps your bank's register).*`,
+    `*(I actually ended up building a tool at ledger-snap.com that generates certified .QBO Web Connect files with INTU.BID headers. Happy to answer any formatting questions if you're writing a custom parser).*`,
+    `*(Disclosure: Developer of ledger-snap.com here—we process bank PDFs purely in ephemeral volatile RAM and output clean .QBO and Excel with formulas. Happy to test your statement layout if you want to share a redacted sample).*`
   ];
 
   const founderDisclosure = antiBanDisclosures[Math.floor(Math.random() * antiBanDisclosures.length)];

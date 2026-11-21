@@ -173,6 +173,61 @@ Many PDF statements print purchases as positive numbers (e.g. "$45.00 Starbucks"
         a: 'In LedgerSnap’s interactive review grid, simply click the "Invert Signs (+/-)" button to reverse all transaction signs with one click before downloading.'
       }
     ]
+  },
+  {
+    slug: 'extraire-releve-bancaire-pdf-vers-quickbooks-qbo',
+    aliases: [
+      'commande-pdf-vers-quickbooks',
+      'extraire-commande-pdf-vers-quickbooks',
+      'pdf-vers-quickbooks',
+      'automatisation-pdf-vers-quickbooks',
+      'convertir-pdf-vers-quickbooks'
+    ],
+    title: 'Comment Extraire et Convertir un Relevé Bancaire PDF vers QuickBooks (.QBO) & Excel',
+    metaTitle: 'Extraire Relevé Bancaire PDF vers QuickBooks (.QBO) & Excel | LedgerSnap',
+    metaDescription: 'Guide complet : comment extraire et automatiser la conversion de vos relevés bancaires PDF vers Intuit QuickBooks (.QBO) et Excel (.XLSX) sans saisie manuelle.',
+    readingTime: '5 min de lecture',
+    publishedDate: 'Novembre 2026',
+    author: 'Équipe d\'Intégration Comptable LedgerSnap',
+    intro: 'L\'extraction manuelle des transactions depuis un relevé bancaire PDF vers QuickBooks est l\'une des tâches les plus chronophages pour les comptables, experts-comptables et entreprises au Canada et en France. Voici la méthode complète pour automatiser la conversion de vos PDF bancaires en fichiers certifiés QuickBooks Web Connect (.QBO) et classeurs Excel réconciliés au centime près.',
+    sections: [
+      {
+        heading: 'Pourquoi QuickBooks refuse-t-il souvent l\'import direct des relevés PDF ?',
+        content: `QuickBooks Online et QuickBooks Desktop ne prennent pas en charge l'import direct des fichiers PDF non structurés. Les banques canadiennes (RBC, BMO, TD, Desjardins, Scotia) ne fournissent souvent que des relevés historiques au format PDF.
+
+Pour intégrer ces écritures sans ressaisie manuelle, vous devez obligatoirement transformer le PDF en :
+1. **Fichier certifié Intuit Web Connect (.QBO)** : Le format propriétaire d'Intuit basé sur la norme OFX 1.02 avec balises institutionnelles \`<INTU.BID>\` et hachages uniques \`<FITID>\`.
+2. **Feuille Excel / CSV structurée à 3 ou 4 colonnes** : Avec les dates au format conforme et les montants débits/crédits séparés.`
+      },
+      {
+        heading: 'Comment convertir votre relevé bancaire PDF en fichier .QBO en 3 étapes :',
+        content: `Grâce au moteur de conversion de LedgerSnap, vous pouvez traiter vos relevés sans installer de logiciel :
+1. **Glissez-déposez votre relevé bancaire PDF** (relevé de compte chèque, épargne ou carte de crédit d'affaires) dans LedgerSnap.
+2. **Vérification mathématique instantanée** : L'algorithme réconcilie automatiquement le solde d'ouverture, les débits, les crédits et le solde de clôture pour garantir zéro erreur d'arrondi.
+3. **Téléchargez votre fichier .QBO certifié** : Ouvrez QuickBooks, allez dans **Opérations > Opérations bancaires > Télécharger depuis un fichier**, et importez votre fichier en 1 clic sans aucun mappage manuel de colonnes.`
+      },
+      {
+        heading: 'Les erreurs courantes à éviter lors de l\'automatisation PDF vers QuickBooks',
+        content: `Pour garantir un import sans encombre :
+- **Respecter la limite de 32 caractères pour les noms de commerçants** : QuickBooks rejette les fichiers où le champ \`<NAME>\` dépasse 32 caractères. LedgerSnap normalise automatiquement les descriptions de commerçants.
+- **Inversion des signes de carte de crédit** : Les achats par carte doivent être enregistrés comme des débits négatifs dans le registre QuickBooks.
+- **Protection de la confidentialité des données bancaires** : Les données financières de vos clients sont traitées exclusivement dans la mémoire vive éphémère (RAM) et immédiatement détruites après conversion.`
+      }
+    ],
+    faqs: [
+      {
+        q: 'Quelles banques canadiennes et francophones sont prises en charge ?',
+        a: 'LedgerSnap prend en charge toutes les institutions financières majeures : Banque Royale du Canada (RBC), TD Canada Trust, BMO Banque de Montréal, Banque Scotia, Desjardins, Banque Nationale du Canada (BNC), CIBC, ainsi que les banques américaines et européennes.'
+      },
+      {
+        q: 'Est-il possible d\'exporter directement vers Excel (.XLSX) ?',
+        a: 'Oui ! En plus du format .QBO pour QuickBooks, vous pouvez exporter en 1 clic un classeur Excel complet avec sommaire de rapprochement bancaire et ventilation des opérations.'
+      },
+      {
+        q: 'Mes données bancaires confidentielles sont-elles protégées ?',
+        a: 'Absolument. Vos documents financiers sont traités uniquement dans la mémoire vive volatile (RAM) et supprimés définitivement dès la fin du téléchargement. Aucune donnée n\'est conservée sur disque.'
+      }
+    ]
   }
 ];
 

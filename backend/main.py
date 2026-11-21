@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 import io
 import hmac
@@ -8,7 +9,7 @@ import logging
 import requests
 import pandas as pd
 from typing import Dict, Any, Optional, Tuple
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 
@@ -43,7 +44,7 @@ try:
         get_free_usage_status, record_free_usage_download,
         check_or_record_free_usage, deduct_credit_if_needed,
         reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS,
-        save_conversion_record, get_conversion_record, get_db_info
+        get_db_info
     )
 except ImportError:
     from converters.pdf_parser import extract_transactions_from_pdf
@@ -58,7 +59,7 @@ except ImportError:
         get_free_usage_status, record_free_usage_download,
         check_or_record_free_usage, deduct_credit_if_needed,
         reset_free_usage, is_admin_email, ADMIN_LICENSE_KEY, ADMIN_EMAILS,
-        save_conversion_record, get_conversion_record, get_db_info
+        get_db_info
     )
 
 app = FastAPI(
@@ -84,9 +85,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for active conversions (keyed by UUID)
-# In production on Railway, can use Redis or PostgreSQL if persistence is needed
+# Volatile in-memory storage for active conversions (keyed by UUID), pruned after 30 minutes
 CONVERSIONS_DB: Dict[str, Dict[str, Any]] = {}
+CONVERSION_TTL_SECONDS = 1800
+
+def _prune_conversions_db(max_age_seconds: int = CONVERSION_TTL_SECONDS) -> None:
+    """Evicts active conversions from RAM after max_age_seconds for strict zero-retention."""
+    now = time.time()
+    expired = [
+        fid for fid, rec in CONVERSIONS_DB.items()
+        if (now - float(rec.get("created_at", now))) > max_age_seconds
+    ]
+    for fid in expired:
+        CONVERSIONS_DB.pop(fid, None)
 
 SAMPLE_TRANSACTIONS = [
     {"date": "10/01/2026", "description": "STRIPE PAYMENTS TRANSFER PPD", "amount": 2450.00, "type": "Credit", "balance": 14250.00},
@@ -103,7 +114,7 @@ SAMPLE_TRANSACTIONS = [
     {"date": "10/18/2026", "description": "CHASE BUSINESS CHECKING MONTHLY FEE WAIVED", "amount": 0.00, "type": "Credit", "balance": 16926.70}
 ]
 
-GEO_IP_CACHE: Dict[str, Dict[str, str]] = {}
+GEO_IP_CACHE: Dict[str, Dict[str, Any]] = {}
 
 def get_client_ip(request: Request) -> str:
     cf_ip = request.headers.get("cf-connecting-ip")
@@ -114,7 +125,11 @@ def get_client_ip(request: Request) -> str:
         return x_forwarded.split(",")[0].strip()
     return request.client.host if request.client else ""
 
-def get_client_geo(ip: str, request: Optional[Request] = None) -> Dict[str, str]:
+def get_client_geo(
+    ip: str,
+    request: Optional[Request] = None,
+    cf_headers: Optional[Dict[str, Optional[str]]] = None
+) -> Dict[str, Any]:
     """
     Resolves client geographic location (City, Region/State, Country) and ISP/Org.
     1. Checks Cloudflare CF-IPCountry / CF-IPCity / CF-Region headers (0ms latency).
@@ -122,10 +137,12 @@ def get_client_geo(ip: str, request: Optional[Request] = None) -> Dict[str, str]
     3. Resolves via fast external GeoIP provider with timeout, then caches in memory.
     """
     # 1. Cloudflare headers if present on request
-    if request:
-        cf_city = request.headers.get("cf-ipcity")
-        cf_region = request.headers.get("cf-region") or request.headers.get("cf-region-code")
-        cf_country = request.headers.get("cf-ipcountry")
+    if request or cf_headers:
+        cf_city = (cf_headers.get("cf-ipcity") if cf_headers else None) or (request.headers.get("cf-ipcity") if request else None)
+        cf_region = (cf_headers.get("cf-region") if cf_headers else None) or (
+            (request.headers.get("cf-region") or request.headers.get("cf-region-code")) if request else None
+        )
+        cf_country = (cf_headers.get("cf-ipcountry") if cf_headers else None) or (request.headers.get("cf-ipcountry") if request else None)
         if cf_city or cf_country:
             parts = [p for p in [cf_city, cf_region, cf_country] if p]
             loc = ", ".join(parts)
@@ -134,15 +151,19 @@ def get_client_geo(ip: str, request: Optional[Request] = None) -> Dict[str, str]
                 "city": cf_city or "",
                 "region": cf_region or "",
                 "country": cf_country or "",
-                "org": "Cloudflare Edge"
+                "org": "Cloudflare Edge",
+                "hosting": False
             }
 
     # 2. Check local or private network
-    if not ip or ip in ["127.0.0.1", "localhost", "::1"] or ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("100.64."):
-        return {"location": "Local / Private Network", "city": "Local", "region": "", "country": "Local", "org": "Localhost"}
+    if not ip or ip in ["127.0.0.1", "localhost", "::1", "testclient"] or ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("100.64."):
+        return {"location": "Local / Private Network", "city": "Local", "region": "", "country": "Local", "org": "Localhost", "hosting": False}
 
     if ip in GEO_IP_CACHE:
         return GEO_IP_CACHE[ip]
+
+    if len(GEO_IP_CACHE) > 2000:
+        GEO_IP_CACHE.clear()
 
     # 3. Lookup via fast GeoIP API (ip-api.com) with 1.5s timeout
     try:
@@ -253,26 +274,50 @@ def root():
 def favicon():
     return Response(status_code=204)
 
+def _log_free_tier_visit(
+    real_ip: str,
+    cid: str,
+    ua: str,
+    referer: str,
+    page_path: str,
+    cf_headers: Dict[str, Optional[str]]
+) -> None:
+    """Runs GeoIP lookup and visitor classification off the critical response path."""
+    try:
+        geo = get_client_geo(real_ip, cf_headers=cf_headers)
+        tag, device = classify_visitor(ua, geo.get("org", ""), geo.get("hosting", False))
+        logger.info(
+            f"[{tag}] 📍 {geo['location']} | Device={device} | Path={page_path} | IP={real_ip} | CID={cid} | Referer={referer}"
+        )
+    except Exception:
+        pass
+
 @app.get("/api/free-tier/status")
-def get_free_tier_status(request: Request, client_id: Optional[str] = Query(None)):
+def get_free_tier_status(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    client_id: Optional[str] = Query(None),
+    path: Optional[str] = Query(None)
+):
     """Checks whether this IP or device has used their 1 free statement conversion."""
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
     allowed, used = get_free_usage_status(cid, real_ip)
-    
+
     ua = request.headers.get("user-agent", "")
     referer = request.headers.get("referer", "direct")
-    geo = get_client_geo(real_ip, request)
-    tag, device = classify_visitor(ua, geo.get("org", ""), geo.get("hosting", False))
-    
-    logger.info(f"[{tag}] 📍 {geo['location']} | Device={device} | IP={real_ip} | CID={cid} | Referer={referer}")
+    page_path = path or "/"
+    cf_headers = {
+        "cf-ipcity": request.headers.get("cf-ipcity"),
+        "cf-region": request.headers.get("cf-region") or request.headers.get("cf-region-code"),
+        "cf-ipcountry": request.headers.get("cf-ipcountry"),
+    }
+    background_tasks.add_task(_log_free_tier_visit, real_ip, cid, ua, referer, page_path, cf_headers)
 
     return {
         "allowed": allowed,
         "conversions_used": used,
-        "ip": real_ip,
-        "location": geo["location"],
-        "device": device
+        "ip": real_ip
     }
 
 @app.post("/api/free-tier/reset")
@@ -295,31 +340,51 @@ def health_check():
 
 @app.get("/sitemap.xml")
 def sitemap():
-    content = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://ledger-snap.com/</loc><lastmod>2026-10-15</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://ledger-snap.com/convert/chase-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/convert/bank-of-america-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/convert/wells-fargo-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/convert/citibank-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/capital-one-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/american-express-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/mercury-bank-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/td-bank-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/pnc-bank-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/us-bank-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/bank-hapoalim-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/convert/bank-leumi-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/convert/discount-bank-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/convert/mizrahi-tefahot-pdf-to-qbo</loc><lastmod>2026-10-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/compare/ledgersnap-vs-docuclipper</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/compare/ledgersnap-vs-moneythumb</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/compare/ledgersnap-vs-properconvert</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://ledger-snap.com/compare/ledgersnap-vs-chatgpt</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/guides/how-to-import-pdf-bank-statements-into-quickbooks-online</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/guides/how-to-fix-quickbooks-web-connect-error-ol-222</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://ledger-snap.com/guides/convert-israeli-bank-statements-to-quickbooks-us-subsidiaries</loc><lastmod>2026-10-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
-</urlset>"""
+    frontend_sitemap = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "frontend", "public", "sitemap.xml"
+    )
+    if os.path.exists(frontend_sitemap):
+        try:
+            with open(frontend_sitemap, "r", encoding="utf-8") as f:
+                return Response(content=f.read(), media_type="application/xml")
+        except Exception:
+            pass
+
+    fallback_urls = [
+        ("https://ledger-snap.com/", "daily", "1.0"),
+        ("https://ledger-snap.com/banks", "weekly", "0.9"),
+        ("https://ledger-snap.com/tools", "weekly", "0.9"),
+        ("https://ledger-snap.com/guides", "weekly", "0.9"),
+        ("https://ledger-snap.com/compare", "monthly", "0.8"),
+        ("https://ledger-snap.com/tools/csv-to-qbo", "weekly", "0.9"),
+        ("https://ledger-snap.com/tools/ofx-to-qbo", "weekly", "0.8"),
+        ("https://ledger-snap.com/tools/qfx-to-qbo", "weekly", "0.8"),
+        ("https://ledger-snap.com/tools/qbo-viewer-and-validator", "weekly", "0.9"),
+        ("https://ledger-snap.com/convert/chase-statement-to-qbo", "weekly", "0.9"),
+        ("https://ledger-snap.com/convert/bank-of-america-statement-to-qbo", "weekly", "0.9"),
+        ("https://ledger-snap.com/convert/wells-fargo-statement-to-qbo", "weekly", "0.9"),
+        ("https://ledger-snap.com/convert/citi-statement-to-qbo", "weekly", "0.8"),
+        ("https://ledger-snap.com/convert/capital-one-statement-to-qbo", "weekly", "0.8"),
+        ("https://ledger-snap.com/convert/amex-statement-to-qbo", "weekly", "0.8"),
+        ("https://ledger-snap.com/convert/mercury-statement-to-qbo", "weekly", "0.8"),
+        ("https://ledger-snap.com/convert/bank-hapoalim-statement-to-qbo", "weekly", "0.9"),
+        ("https://ledger-snap.com/convert/bank-leumi-statement-to-qbo", "weekly", "0.9"),
+        ("https://ledger-snap.com/compare/docuclipper-alternative", "monthly", "0.8"),
+        ("https://ledger-snap.com/compare/moneythumb-alternative", "monthly", "0.8"),
+        ("https://ledger-snap.com/compare/propersoft-properconvert-alternative", "monthly", "0.8"),
+        ("https://ledger-snap.com/compare/ledgersnap-vs-chatgpt", "monthly", "0.9"),
+        ("https://ledger-snap.com/guides/fix-quickbooks-web-connect-error-ol-222-ol-301", "monthly", "0.9"),
+        ("https://ledger-snap.com/guides/fix-quickbooks-unable-to-verify-financial-institution-intu-bid", "monthly", "0.9"),
+        ("https://ledger-snap.com/guides/import-older-than-90-days-bank-statements-into-quickbooks", "monthly", "0.9"),
+        ("https://ledger-snap.com/guides/convert-credit-card-pdf-to-qbo", "monthly", "0.9"),
+        ("https://ledger-snap.com/guides/extraire-releve-bancaire-pdf-vers-quickbooks-qbo", "monthly", "0.8"),
+    ]
+    nodes = "\n".join(
+        f'  <url><loc>{loc}</loc><lastmod>2026-11-21</lastmod><changefreq>{freq}</changefreq><priority>{prio}</priority></url>'
+        for loc, freq, prio in fallback_urls
+    )
+    content = f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{nodes}\n</urlset>'
     return Response(content=content, media_type="application/xml")
 
 @app.get("/robots.txt")
@@ -775,7 +840,7 @@ async def convert_pdf(
     real_ip = get_client_ip(request)
     cid = client_id or real_ip or "anonymous-client"
     geo = get_client_geo(real_ip, request)
-    tag, device = classify_visitor(request.headers.get("user-agent", ""), geo.get("org", ""))
+    tag, device = classify_visitor(request.headers.get("user-agent", ""), geo.get("org", ""), geo.get("hosting", False))
     logger.info(f"📄 [CONVERT ATTEMPT] [{tag}] 📍 {geo['location']} | Device={device} | File={file.filename} | IP={real_ip} | CID={cid}")
 
     # Check if user has an active paid license or admin status
@@ -804,13 +869,14 @@ async def convert_pdf(
         raise HTTPException(status_code=400, detail="Empty file uploaded.")
 
     try:
+        _prune_conversions_db()
         transactions, bank_detected, summary = extract_transactions_from_pdf(content)
         
-        # If no transactions could be parsed, fallback to sample demonstration
         if not transactions:
-            transactions = SAMPLE_TRANSACTIONS
-            summary["count"] = len(SAMPLE_TRANSACTIONS)
-            summary["note"] = "Extracted using intelligent layout reconstruction"
+            raise HTTPException(
+                status_code=422,
+                detail="Could not extract transaction rows from this PDF. Please verify it is an unencrypted bank or credit card statement PDF (scanned statements or unusual layouts can be reported to support without consuming your free conversion)."
+            )
 
         file_id = str(uuid.uuid4())
         conv_record = {
@@ -819,14 +885,12 @@ async def convert_pdf(
             "transactions": transactions,
             "summary": summary,
             "client_id": cid,
-            "ip": real_ip
+            "ip": real_ip,
+            "created_at": time.time(),
+            "is_free_trial": not has_valid_license,
+            "free_exported": False
         }
         CONVERSIONS_DB[file_id] = conv_record
-        save_conversion_record(file_id, conv_record)
-
-        # Consume the 1 free trial conversion for this IP/client
-        if not has_valid_license:
-            record_free_usage_download(cid, real_ip)
 
         return {
             "file_id": file_id,
@@ -871,11 +935,8 @@ def download_converted(
             deduct_credit_if_needed(license_key)
             is_authorized = True
 
+    _prune_conversions_db()
     record = CONVERSIONS_DB.get(file_id)
-    if not record:
-        record = get_conversion_record(file_id)
-        if record:
-            CONVERSIONS_DB[file_id] = record
     if not record:
         if file_id == "demo-sample-chase-statement":
             record = {
@@ -905,6 +966,15 @@ def download_converted(
                 status_code=402, 
                 detail="Free trial limit reached. Upgrade to Pro for unlimited conversions and instant exports."
             )
+        same_free_session = bool(record.get("free_exported") and (file_cid == cid or file_ip == real_ip))
+        if not allowed and not same_free_session:
+            raise HTTPException(
+                status_code=402, 
+                detail="Free trial limit reached. Upgrade to Pro for unlimited conversions and instant exports."
+            )
+        if not record.get("free_exported"):
+            record_free_usage_download(cid, real_ip)
+            record["free_exported"] = True
 
     transactions = record["transactions"]
     bank_name = record.get("bank_name", "Bank Statement")
@@ -1068,12 +1138,22 @@ def export_customized(request: Request, payload: Dict[str, Any]):
             is_authorized = True
 
     if not is_authorized and file_id != "demo-sample-chase-statement":
+        _prune_conversions_db()
         allowed, used = get_free_usage_status(cid, real_ip)
-        if not allowed or used > 1:
+        record = CONVERSIONS_DB.get(file_id)
+        same_free_session = bool(
+            record and record.get("free_exported") and (record.get("client_id") == cid or record.get("ip") == real_ip)
+        )
+        if not allowed and not same_free_session:
             raise HTTPException(
                 status_code=402,
                 detail="Free trial limit reached. Upgrade to Pro for unlimited exports."
             )
+        if record and not record.get("free_exported"):
+            record_free_usage_download(cid, real_ip)
+            record["free_exported"] = True
+        elif not record and allowed:
+            record_free_usage_download(cid, real_ip)
 
     transactions = payload.get("transactions", [])
     bank_name = payload.get("bank_name", "Bank Statement")

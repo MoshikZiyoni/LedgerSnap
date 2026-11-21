@@ -45,6 +45,7 @@ export default function ToolsPage({ tool, onNavigate }) {
 
     return () => {
       document.title = "LedgerSnap | Convert Bank Statement PDF to QuickBooks (.QBO) & Excel";
+      if (canonical) canonical.setAttribute('href', 'https://ledger-snap.com/');
     };
   }, [tool]);
 
@@ -62,6 +63,7 @@ export default function ToolsPage({ tool, onNavigate }) {
       const parsed = parseQboText(text);
       setParsedData(parsed);
       setIsProcessing(false);
+      window.trackLedgerEvent?.('free_tool_used', { tool: tool.slug, action: 'validate_qbo' });
     };
     reader.readAsText(file);
   };
@@ -75,6 +77,7 @@ export default function ToolsPage({ tool, onNavigate }) {
       repairs: repairsApplied,
       reparsed: parseQboText(fixedContent)
     });
+    window.trackLedgerEvent?.('free_tool_used', { tool: tool.slug, action: 'fix_ol222' });
   };
 
   const handleDownloadFixedQbo = () => {
@@ -216,6 +219,7 @@ export default function ToolsPage({ tool, onNavigate }) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    window.trackLedgerEvent?.('free_tool_used', { tool: tool.slug, action: 'convert_csv_to_qbo', rows: txns.length });
   };
 
   // Handle OFX to QBO
@@ -249,6 +253,7 @@ export default function ToolsPage({ tool, onNavigate }) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    window.trackLedgerEvent?.('free_tool_used', { tool: tool.slug, action: 'convert_ofx_to_qbo' });
   };
 
   return (

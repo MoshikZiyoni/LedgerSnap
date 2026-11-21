@@ -302,8 +302,22 @@ body.readable-font {
     padding: 14px 16px !important;
   }
   
-  .desktop-nav-link {
+  .desktop-nav-link,
+  .desktop-nav-pill {
     display: none !important;
+  }
+
+  .a11y-widget-btn {
+    bottom: 72px !important;
+    left: 14px !important;
+  }
+
+  .cookie-banner {
+    bottom: 72px !important;
+  }
+
+  footer {
+    padding-bottom: 76px !important;
   }
   
   .hero-headline {

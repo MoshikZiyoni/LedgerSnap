@@ -39,7 +39,7 @@ export default function Footer({ onNavigate }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Lock size={18} color="var(--accent-indigo)" />
             <span style={{ color: 'var(--text-main)', fontWeight: '600', fontSize: '13px' }}>
-              256-Bit TLS &amp; Client-Side Encryption
+              256-Bit TLS Encryption in Transit
             </span>
           </div>
         </div>
@@ -57,7 +57,7 @@ export default function Footer({ onNavigate }) {
               </span>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6, marginBottom: '20px' }}>
-              Instant deterministic conversion of US bank &amp; credit card statement PDFs into certified Intuit QuickBooks (.QBO) and formatted Excel (.XLSX) spreadsheets.
+              Instant deterministic conversion of US &amp; Israeli bank &amp; credit card statement PDFs into certified Intuit QuickBooks (.QBO), Excel (.XLSX), and Hashavshevet files.
             </p>
 
             <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
@@ -104,7 +104,7 @@ export default function Footer({ onNavigate }) {
                   onClick={(e) => handleLinkClick(e, '/banks')}
                   style={{ color: 'var(--accent-cyan)', textDecoration: 'none', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  🏦 View All 30 US Banks Directory →
+                  🏦 View All 40+ Supported Banks (US &amp; Israel) →
                 </a>
               </li>
             </ul>

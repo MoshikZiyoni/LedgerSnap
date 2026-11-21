@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Building2, ArrowRight, ShieldCheck, Zap, CheckCircle2, Clock } from 'lucide-react';
-import { US_INSTITUTIONS, SEO_BANKS } from '../data/seoBanks';
+import { US_INSTITUTIONS, ISRAELI_INSTITUTIONS, ALL_INSTITUTIONS } from '../data/seoBanks';
 
 export default function BanksDirectoryPage({ onNavigate }) {
   const [search, setSearch] = useState('');
+  const [regionFilter, setRegionFilter] = useState('ALL');
 
-  const filteredBanks = US_INSTITUTIONS.filter(bank => {
+  useEffect(() => {
+    const title = 'Supported US & Israeli Banks Directory (PDF to .QBO & Excel) | LedgerSnap';
+    const desc = 'Browse 40+ supported US and Israeli banks, credit cards, and neobanks pre-configured with verified Intuit <INTU.BID> headers for QuickBooks Online, Desktop, Excel, and Hashavshevet.';
+    document.title = title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', desc);
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute('href', 'https://ledger-snap.com/banks');
+    return () => {
+      document.title = 'LedgerSnap | Convert Bank Statement PDF to QuickBooks (.QBO) & Excel';
+      if (canonical) canonical.setAttribute('href', 'https://ledger-snap.com/');
+    };
+  }, []);
+
+  const baseList = regionFilter === 'US'
+    ? US_INSTITUTIONS
+    : regionFilter === 'IL'
+    ? ISRAELI_INSTITUTIONS
+    : ALL_INSTITUTIONS;
+
+  const filteredBanks = baseList.filter(bank => {
     const q = search.toLowerCase();
     return (
       bank.name.toLowerCase().includes(q) ||
@@ -32,22 +53,49 @@ export default function BanksDirectoryPage({ onNavigate }) {
       {/* Hero Header */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: '9999px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', color: 'var(--accent-cyan)', fontSize: '13px', fontWeight: '700', marginBottom: '16px' }}>
-          <Building2 size={16} /> Certified US Bank Directory
+          <Building2 size={16} /> Certified US &amp; Israeli Bank Directory
         </div>
         <h1 style={{ fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: '800', lineHeight: 1.2, marginBottom: '16px', letterSpacing: '-0.5px' }}>
-          Supported US Banks &amp; Credit Cards for <br />
-          <span className="gradient-text">QuickBooks Web Connect (.QBO)</span>
+          Supported US &amp; Israeli Banks for <br />
+          <span className="gradient-text">QuickBooks (.QBO), Excel &amp; Hashavshevet</span>
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '16px', maxWidth: '720px', margin: '0 auto 28px auto' }}>
-          Convert PDF bank and credit card statements from top US institutions into 100% verified QuickBooks Online, QuickBooks Desktop, Xero, and CPA-audit Excel files. Every bank profile is pre-tuned with certified Intuit Financial Institution IDs (&lt;INTU.BID&gt; &amp; &lt;FI&gt;) to prevent Web Connect errors OL-222 and OL-301.
+        <p style={{ color: 'var(--text-muted)', fontSize: '16px', maxWidth: '720px', margin: '0 auto 24px auto' }}>
+          Convert PDF bank and credit card statements from 40+ US institutions and major Israeli banks into verified QuickBooks Online, Desktop, Excel, and Hashavshevet files with pre-tuned &lt;INTU.BID&gt; headers.
         </p>
+
+        {/* Region Filter Tabs */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'ALL', label: `All Banks (${ALL_INSTITUTIONS.length})` },
+            { id: 'US', label: `US Banks & Cards (${US_INSTITUTIONS.length})` },
+            { id: 'IL', label: `Israeli Banks & Cards (${ISRAELI_INSTITUTIONS.length})` },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setRegionFilter(tab.id)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                border: regionFilter === tab.id ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                background: regionFilter === tab.id ? 'rgba(56, 189, 248, 0.16)' : 'rgba(15, 23, 42, 0.6)',
+                color: regionFilter === tab.id ? '#fff' : 'var(--text-muted)'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {/* Search Bar */}
         <div style={{ maxWidth: '520px', margin: '0 auto', position: 'relative' }}>
           <Search size={18} color="var(--text-dim)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Search by bank name, INTU.BID, or card brand (e.g. Chase, Amex, 10898)..."
+            placeholder="Search Chase, Leumi, Hapoalim, Amex, INTU.BID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
@@ -154,32 +202,13 @@ export default function BanksDirectoryPage({ onNavigate }) {
                     fontSize: '13px',
                     fontWeight: '700',
                     textDecoration: 'none',
-                    marginBottom: '10px'
+                    marginBottom: '6px'
                   }}
                 >
-                  Convert {bank.name} Statement <ArrowRight size={14} />
+                  Convert {bank.name} Statement to .QBO &amp; Excel <ArrowRight size={14} />
                 </a>
-
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', fontSize: '11px' }}>
-                  <a
-                    href={`/convert/${bank.id}-pdf-to-quickbooks-online`}
-                    onClick={(e) => handleLinkClick(e, `/convert/${bank.id}-pdf-to-quickbooks-online`)}
-                    style={{ color: 'var(--text-dim)', textDecoration: 'none' }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
-                  >
-                    QuickBooks Online
-                  </a>
-                  <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
-                  <a
-                    href={`/convert/${bank.id}-pdf-to-csv`}
-                    onClick={(e) => handleLinkClick(e, `/convert/${bank.id}-pdf-to-csv`)}
-                    style={{ color: 'var(--text-dim)', textDecoration: 'none' }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-cyan)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
-                  >
-                    Export CSV
-                  </a>
+                <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-dim)' }}>
+                  Supports QuickBooks .QBO, Excel .XLSX &amp; {bank.region === 'IL' ? 'Hashavshevet' : 'CSV'}
                 </div>
               </div>
             </div>

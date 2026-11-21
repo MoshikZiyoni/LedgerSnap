@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeft, Shield, CheckCircle, Scale, FileText, RefreshCw } from 'lucide-react';
 
 export default function LegalPage({ pageType, onNavigate }) {
@@ -12,7 +12,37 @@ export default function LegalPage({ pageType, onNavigate }) {
     ? 'Privacy Policy' 
     : 'Refund & Cancellation Policy';
 
-  const lastUpdated = 'October 15, 2026';
+  useEffect(() => {
+    const pageMeta = isTerms
+      ? {
+          title: 'Terms of Service | LedgerSnap',
+          desc: 'LedgerSnap Terms of Service for automated bank statement PDF to QuickBooks (.QBO) and Excel conversion.',
+          path: '/terms'
+        }
+      : isPrivacy
+      ? {
+          title: 'Zero-Retention Privacy Policy | LedgerSnap',
+          desc: 'How LedgerSnap processes PDF bank statements in ephemeral volatile RAM with auto-expiration and zero transaction database retention.',
+          path: '/privacy'
+        }
+      : {
+          title: '14-Day Refund & Cancellation Policy | LedgerSnap',
+          desc: 'LedgerSnap 14-day money-back guarantee and one-click subscription cancellation policy.',
+          path: '/refund'
+        };
+
+    document.title = pageMeta.title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', pageMeta.desc);
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) canonical.setAttribute('href', `https://ledger-snap.com${pageMeta.path}`);
+    return () => {
+      document.title = 'LedgerSnap | Convert Bank Statement PDF to QuickBooks (.QBO) & Excel';
+      if (canonical) canonical.setAttribute('href', 'https://ledger-snap.com/');
+    };
+  }, [isTerms, isPrivacy, isRefund]);
+
+  const lastUpdated = 'November 21, 2026';
 
   return (
     <div style={{ maxWidth: '920px', margin: '0 auto', padding: '48px 24px', color: 'var(--text-light, #f1f5f9)' }}>
@@ -98,9 +128,9 @@ export default function LegalPage({ pageType, onNavigate }) {
               LedgerSnap is engineered from the ground up to protect confidential financial records. We adhere to a strict <strong>Zero-Retention Policy</strong>:
             </p>
             <ul>
-              <li><strong>Volatile In-Memory Processing:</strong> Uploaded PDF statements are parsed exclusively in ephemeral volatile RAM memory.</li>
-              <li><strong>Zero Disk Storage:</strong> Bank statements are never saved to permanent disk storage, databases, or third-party buckets.</li>
-              <li><strong>Instant Wipe:</strong> Once your converted .QBO or .XLSX file is downloaded, memory buffers are permanently flushed and wiped.</li>
+              <li><strong>Volatile In-Memory Processing:</strong> Uploaded PDF statements and parsed transaction rows are held strictly in volatile RAM during your active export session and expire automatically within 30 minutes (or on server restart).</li>
+              <li><strong>Zero Disk or Transaction DB Storage:</strong> Bank statements and parsed transaction records are never saved to permanent disk storage, databases, or third-party buckets.</li>
+              <li><strong>256-Bit TLS Encryption in Transit:</strong> All uploads and exports travel over HTTPS/TLS 1.3 between your browser and our stateless API.</li>
               <li><strong>No AI Model Training:</strong> We never train AI, machine learning models, or LLMs on your bank transaction details or financial statements.</li>
             </ul>
 

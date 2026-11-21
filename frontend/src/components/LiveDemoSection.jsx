@@ -2,9 +2,15 @@ import React, { useState } from 'react';
 import { Play, Sparkles, CheckCircle2, ShieldCheck, Database, FileSpreadsheet } from 'lucide-react';
 
 export default function LiveDemoSection({ onTryChaseDemo }) {
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = React.useRef(null);
+
+  const handleStartVideo = () => {
+    setHasStarted(true);
+    setIsPlaying(true);
+  };
 
   const toggleMute = () => {
     if (videoRef.current) {
@@ -68,81 +74,139 @@ export default function LiveDemoSection({ onTryChaseDemo }) {
             background: '#090d16'
           }}
         >
-          <video
-            ref={videoRef}
-            src="/demo/ledgersnap-qbo-demo.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls
-            preload="auto"
-            poster="/demo/poster.png"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover'
-            }}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          >
-            Your browser does not support the video tag.
-          </video>
+          {!hasStarted ? (
+            <button
+              type="button"
+              onClick={handleStartVideo}
+              aria-label="Watch 45-second LedgerSnap QBO conversion walkthrough"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                padding: 0,
+                border: 'none',
+                background: '#090d16',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <img
+                src="/demo/poster.jpg"
+                alt="LedgerSnap Chase PDF to QuickBooks .QBO demo walkthrough preview"
+                loading="lazy"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  filter: 'brightness(0.75)'
+                }}
+              />
+              <span
+                style={{
+                  position: 'relative',
+                  zIndex: 2,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '14px 26px',
+                  borderRadius: '9999px',
+                  background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.95), rgba(99, 102, 241, 0.95))',
+                  color: '#fff',
+                  fontWeight: '800',
+                  fontSize: '15px',
+                  boxShadow: '0 10px 30px rgba(14, 165, 233, 0.45)',
+                  border: '1px solid rgba(255,255,255,0.25)'
+                }}
+              >
+                <Play size={18} fill="#fff" /> Watch 45s Demo
+              </span>
+            </button>
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                src="/demo/ledgersnap-qbo-demo.mp4"
+                autoPlay
+                muted={isMuted}
+                loop
+                playsInline
+                controls
+                preload="metadata"
+                poster="/demo/poster.jpg"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+              >
+                Your browser does not support the video tag.
+              </video>
 
-          {/* Sound Mute/Unmute Quick Toggle */}
-          <button
-            type="button"
-            onClick={toggleMute}
-            style={{
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              zIndex: 10,
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(56, 189, 248, 0.4)',
-              borderRadius: '20px',
-              color: '#fff',
-              padding: '6px 14px',
-              fontSize: '12px',
-              fontWeight: '700',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-            }}
-          >
-            {isMuted ? <span style={{ color: '#38bdf8' }}>🔇 Muted (Click for Sound)</span> : <span style={{ color: '#10b981' }}>🔊 Sound On</span>}
-          </button>
+              {/* Sound Mute/Unmute Quick Toggle */}
+              <button
+                type="button"
+                onClick={toggleMute}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  zIndex: 10,
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  borderRadius: '20px',
+                  color: '#fff',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(8px)',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                }}
+              >
+                {isMuted ? <span style={{ color: '#38bdf8' }}>🔇 Muted (Click for Sound)</span> : <span style={{ color: '#10b981' }}>🔊 Sound On</span>}
+              </button>
 
-          {/* Live indicator badge */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '50px',
-              left: '16px',
-              zIndex: 10,
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '16px',
-              color: '#94a3b8',
-              padding: '4px 12px',
-              fontSize: '11px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              pointerEvents: 'none'
-            }}
-          >
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-            Live QBO Import Demo • Auto-Looping
-          </div>
+              {/* Live indicator badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '50px',
+                  left: '16px',
+                  zIndex: 10,
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  borderRadius: '16px',
+                  color: '#94a3b8',
+                  padding: '4px 12px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  pointerEvents: 'none'
+                }}
+              >
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                {isPlaying ? 'Live QBO Import Demo' : 'Demo Paused'}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Action Button Right Below Player */}
